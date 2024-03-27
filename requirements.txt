@@ -1,0 +1,7 @@
+langchain==0.1.12
+langchain_community==0.0.28
+langchain_core==0.1.33
+langchain-openai==0.1.0
+sentence-transformers==2.2.2
+faiss-cpu==1.7.4
+streamlit==1.30.0
