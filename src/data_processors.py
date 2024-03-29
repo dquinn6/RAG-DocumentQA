@@ -93,7 +93,7 @@ class WikiTextProcessor():
             token_limit: Optional[int] = None,
             save_path: str = os.getcwd() + os.sep,
             save_filename: str = "processed_data",
-            manipulate_pattern: Optional[Tuple[str, str]] = None,
+            manipulate_pattern: Optional[List[Tuple[str, str]]] = None,
         ):
 
         if not os.path.exists(save_path):
@@ -122,7 +122,8 @@ class WikiTextProcessor():
                     logging.info(f"largest passage after trim is {largest_passage_size} tokens")
 
             if manipulate_pattern:
-                passages = manipulate_passages(passages, manipulate_pattern, verbose=self.verbose)
+                for pattern in manipulate_pattern:
+                    passages = manipulate_passages(passages, pattern, verbose=self.verbose)
 
             write_df = pd.DataFrame()
             write_df["text"] = passages

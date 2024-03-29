@@ -5,6 +5,10 @@ import tiktoken
 import logging
 from typing import Optional
 from abc import ABC, abstractmethod
+from src.vectorstore_handlers import VectorstoreHandler
+
+RAG_SYS_ROLE_MSG = "You will answer user queries based on the context provided. You will limit your answers ONLY to the information provided and will NOT provide any external information. If the information needed to answer the query is not present in the input, or no additional context is provided, you will reply with 'I can't answer that based on the provided documents'.'"
+
 
 class Communicator(ABC):
     def __init__(self):
@@ -22,25 +26,31 @@ class Communicator(ABC):
     def truncate_text(self):
         pass
 
+    @abstractmethod
+    def post_rag_prompt(self):
+        pass
+
 
 class GPTCommunicator(Communicator):
 
     def __init__(
-            self, api_key_path: str, model_name: str = "gpt-3.5-turbo",
+            self, api_key: str, model_name: str = "gpt-3.5-turbo", vectorstore_handler: Optional[VectorstoreHandler] = None,
         ) -> None:
         """ Init object 
 
         Args:
-            api_key_path (str): File path to OpenAI API key, stored as a txt file.
+            api_key (str): OpenAI API access token
             model_name (str, optional): GPT version to use; defaults to "gpt-3.5-turbo".
+            vectorstore_handler (Optional[VectorstoreHandler]): Vectorstore handler object; needed if invoking RAG method
 
         Raises:
             ValueError: Raised when model_name is not a valid GPT model.
         """        
         super().__init__()
-        # init client with api key file
-        with open(api_key_path) as f:
-            self.client = OpenAI(api_key=f.readline().strip())
+        # init client with api key 
+        self.client = OpenAI(api_key=api_key)
+
+        self.vs_hndlr = vectorstore_handler
         
         # context window limits; found at https://platform.openai.com/docs/models
         model_max_tokens = { 
@@ -139,3 +149,32 @@ class GPTCommunicator(Communicator):
             return None
         
         return truncated_text
+    
+    def set_vectorstore_handler(self, vectorstore_handler: Optional[VectorstoreHandler] = None):
+        self.vs_hndlr = vectorstore_handler
+    
+    def post_rag_prompt(self, query: str):
+        
+        if self.vs_hndlr == None:
+            logging.error("Cannot perform RAG without an initialized vectorstore handler.")
+            return None
+        
+        if self.system_role != RAG_SYS_ROLE_MSG:
+            self.system_role = RAG_SYS_ROLE_MSG
+
+        top_context = self.vs_hndlr.retrieve_top_documents(query)
+        all_context = "\n\n".join(top_context)
+        query = "\n\nBased on the above context, answer the follow question:\n" + query
+
+        # cut context down if needed
+        buffer_token_space = self.count_tokens(query)
+        token_limit = self.max_prompt_tokens - buffer_token_space
+
+        if self.count_tokens(all_context) > token_limit:
+            prompt = self.truncate_text(all_context, token_limit) + query
+        else:
+            prompt = all_context + query
+
+        response = self.post_prompt(prompt)
+
+        return response, top_context

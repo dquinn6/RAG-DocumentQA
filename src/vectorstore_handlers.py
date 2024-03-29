@@ -9,18 +9,39 @@ from langchain_community.document_loaders import CSVLoader
 from langchain_core.documents import Document
 import random
 from typing import Optional, List
-
+from abc import ABC, abstractmethod
 
 from tqdm import tqdm
 import logging
 import sys
 import os
 
-class LangchainVectorstore:
-    def __init__(self, embedding_type, processed_csv_path, verbose_info=True):
+class VectorstoreHandler(ABC):
+    """ Base class for handling vector store functionality. 
+    Basic implementations will need ways to create/load a vectorstore and retrieve documents.
+    """
+    def __init__(self):
+        pass
+
+    @abstractmethod
+    def create_local_vectorstore(self):
+        pass
+
+    @abstractmethod
+    def load_local_vectorstore(self):
+        pass
+
+    @abstractmethod
+    def retrieve_top_documents(self):
+        pass
+
+
+class LangchainVectorstore(VectorstoreHandler):
+    def __init__(self, embedding_type, processed_csv_path, verbose=True):
+        super().__init__()
         self.data = self.load_csv_file(processed_csv_path)
         self.embedding_type = embedding_type
-        self.verbose = verbose_info
+        self.verbose = verbose
         self.vectorstore = None # invoke create/load_local_vectorstore() to set
         self.retriever = None # invoke create_retriever to set
 
@@ -66,8 +87,16 @@ class LangchainVectorstore:
                 raise ValueError("Invalid input; try again with 'y' for yes or 'n' for no.")
             
             if overwrite_saved == "n":
-                if self.verbose:
-                    logging.info("Keeping saved vectorstore; aborting... ")
+                load_instead = input(f"Load instead [y/n]: ").lower()
+                if load_instead not in ["y", "n"]:
+                    raise ValueError("Invalid input; try again with 'y' for yes or 'n' for no.")
+                
+                if load_instead == "y":
+                    self.load_local_vectorstore(load_path=save_path)
+                else:
+                    if self.verbose:
+                        logging.info("Vectorstore not overwritten; aborting... ")
+
                 return None # break out of function
 
         logging.info(f"Creating a new local vectorstore at: {save_path}")
@@ -101,6 +130,8 @@ class LangchainVectorstore:
 
         try:
             self.vectorstore = FAISS.load_local(load_path, self.embedding_type, allow_dangerous_deserialization=True)
+            if self.verbose:
+                logging.info("Vectorstore loaded successfully.")
 
         except Exception as e:
             logging.error(f"Failed to load vectorstore: {e}")
