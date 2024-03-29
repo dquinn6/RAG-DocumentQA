@@ -1,5 +1,4 @@
-ACCESS_TOKEN: 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
-MODEL_NAME: gpt-3.5-turbo
+ACCESS_TOKEN: None
 SAVE_PATH: /Users/dev/projects/Rag_DocumentQA/document_store/
 SEARCH_TYPE: similarity
 N_RETRIEVED_DOCS: 3
