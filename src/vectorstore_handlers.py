@@ -79,9 +79,9 @@ class LangchainVectorstore(VectorstoreHandler):
             logging.error(f"Failed to chunk data: {e}")
 
 
-    def create_local_vectorstore(self, save_path: str) -> None:
+    def create_local_vectorstore(self, save_path: str, force_create = False, callback=None) -> None:
 
-        if os.path.exists(save_path):
+        if os.path.exists(save_path) and not force_create:
             overwrite_saved = input(f"Vectorstore already found at {save_path}; overwrite? [y/n]: ").lower()
             if overwrite_saved not in ["y", "n"]:
                 raise ValueError("Invalid input; try again with 'y' for yes or 'n' for no.")
@@ -102,13 +102,21 @@ class LangchainVectorstore(VectorstoreHandler):
         logging.info(f"Creating a new local vectorstore at: {save_path}")
         try:
             # no built in progress bar from their API; using this workaround shared at: https://stackoverflow.com/questions/77836174/how-can-i-add-a-progress-bar-status-when-creating-a-vector-store-with-langchain
-            with tqdm(total=len(self.data), desc="Processing documents") as progress_bar:
-                for d in self.data:
+            
+            total_len = len(self.data)
+
+            with tqdm(total=total_len, desc="Processing documents") as progress_bar:
+                for d in range(total_len):
+                    doc = self.data[d]
                     if self.vectorstore:
-                        self.vectorstore.add_documents([d])
+                        self.vectorstore.add_documents([doc])
                     else: # init 
-                        self.vectorstore = FAISS.from_documents([d], self.embedding_type)
+                        self.vectorstore = FAISS.from_documents([doc], self.embedding_type)
+
                     progress_bar.update(1)
+                    if callback:
+                        callback(d/total_len, d)
+
 
             #self.vectorstore = FAISS.from_documents(self.data, self.embedding_type)
             # above function is equivalent to embedding each piece of text, zipping text and embeddings as pairs, and creating index from these pairs
