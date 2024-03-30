@@ -6,16 +6,13 @@ import streamlit as st
 import json
 from src.communicators import GPTCommunicator
 from src.data_processors import WikiTextProcessor
-from src.vectorstore_handlers import LangchainVectorstore
-from langchain_community.embeddings import HuggingFaceEmbeddings
 import pandas as pd
-import sys
+from src.helpers import update_patterns_json, process_data, attach_vectorstore
 
-LOG_PATH = "logs/"
-PATTERNS_FILENAME = 'config/manipulate_patterns.json'
+LOG_PATH = config.user_config["LOG_PATH"]
+PATTERNS_FILENAME = config.user_config["PATTERNS_FILENAME"]
 
 # Direct src code logging to backend.log through logging.config
- 
 logging.basicConfig(
     filename=LOG_PATH+"backend.log",
     filemode='a',
@@ -25,7 +22,6 @@ logging.basicConfig(
 )
 
 # Direct UI logging to streamlit.log through logger object
-
 def create_logger(
     name: str = "logger_",
     level: str = "INFO",
@@ -65,18 +61,47 @@ def create_logger(
     
     return logger
 
-def update_patterns_json(key = "", val = "", clear_json=False):
+def render_doc_viewer(
+        docs_name="documents", 
+        index_name="current_index",
+        button_name="next",
+        include_text=None 
+    ):
+    
+    docviewer = st.empty() 
+    idx_placeholder = st.empty()
 
-    with open(PATTERNS_FILENAME) as r:
-        patterns_json = json.load(r)
+    # Initialize the current index
+    if index_name not in st.session_state:
+        st.session_state[index_name] = 0
 
-    if clear_json:
-        patterns_json = {}
-    else:
-        patterns_json.update({key: val})
+    # reset if user filters some docs and current idx is out of bounds
+    if st.session_state[index_name] > len(st.session_state[docs_name]) - 1:
+        st.session_state[index_name] = 0
 
-    with open(PATTERNS_FILENAME, "w") as w:
-        json.dump(patterns_json, w)
+    show_next = st.button(button_name)
+
+    # update index on button click
+    if show_next:
+        # # loop back to beginning if at end of list
+        if st.session_state[index_name] >= len(st.session_state[docs_name]) - 1:
+            st.session_state[index_name] = 0
+        else:
+            st.session_state[index_name] += 1
+
+    with idx_placeholder.container(border=False):
+        if len(st.session_state[docs_name]) != 0:
+            st.write(f"Document: {st.session_state[index_name] + 1} / {len(st.session_state[docs_name])}")
+
+    # Show next element in list
+    with docviewer.container(height=300, border=True):
+        if include_text:
+            st.write(include_text)
+        if len(st.session_state[docs_name]) == 0:
+            st.write("No documents with this criteria could be found; try a larger token limit or different search pattern.")
+        else:
+            st.write(st.session_state[docs_name][st.session_state[index_name]])
+
 
 @st.cache_data
 def init_session():
@@ -105,94 +130,19 @@ def init_communicator_and_processor():
     )
     return communicator, data_processor
 
-def process_data(data_processor):
-
-    save_path = config.user_config["SAVE_PATH"]
-    token_limit = config.user_config["TOKEN_LIMIT"]
-
-    with open(PATTERNS_FILENAME) as f:
-        patterns = list(json.load(f).items())
-    
-    _ = data_processor.process_text(
-        token_limit = token_limit, 
-        save_path = save_path,
-        save_filename = "processed_data.csv",
-        manipulate_pattern = patterns
-    )
-
-def attach_vectorstore(communicator, load_vectorstore=True, _callback=None):
-
-    save_path = config.user_config["SAVE_PATH"]
-    search_type = config.user_config["SEARCH_TYPE"]
-    n_retrieved_docs = config.user_config["N_RETRIEVED_DOCS"]
-    verbose = config.user_config["VERBOSE"]
-
-    vs = LangchainVectorstore(
-        embedding_type = HuggingFaceEmbeddings(),
-        processed_csv_path = save_path+"processed_data.csv",
-        verbose = verbose
-    )
-
-    if load_vectorstore:
-        vs.load_local_vectorstore(load_path=save_path)
-    else:
-        vs.create_local_vectorstore(save_path=save_path, force_create=True, callback=_callback)
-
-    vs.create_retriever(
-        search_type=search_type,
-        search_kwargs={
-            "k": n_retrieved_docs
-        }
-    )
-
-    communicator.set_vectorstore_handler(vs)
-
-    return communicator
-
-def render_doc_viewer(
-        session_document_state, 
-        index_name="current_index",
-        button_name="Next",
-        include_text=None 
-    ):
-    
-    docviewer = st.empty() 
-    idx_placeholder = st.empty()
-
-    # Initialize the current index
-    if index_name not in st.session_state:
-        st.session_state[index_name] = 0
-
-    show_next = st.button(button_name)
-
-    # update index on button click
-    if show_next:
-        # loop back to beginning if at end of list
-        if st.session_state[index_name] == len(session_document_state) - 1:
-            st.session_state[index_name] = 0
-        else:
-            st.session_state[index_name] += 1
-
-    with idx_placeholder.container(border=False):
-        st.write(f"Document: {st.session_state[index_name] + 1} / {len(session_document_state)}")
-
-    # Show next element in list
-    with docviewer.container(height=300, border=True):
-        if include_text:
-            st.write(include_text)
-        st.write(session_document_state[st.session_state[index_name]])
         
 def run_streamlit_app():
 
     st.set_page_config(page_title="Page")
 
+    # Define divider colors for different sections
     section1_color = "green" # Initializaion section
     section2_color = "blue" # Chatbot section
     sidebar1_color = "orange" # Adjust section
     sidebar2_color = "red" # Log section
 
-    # init session states    
-    for state in ["docs_with_pattern", "enable_doc_viewer", "communicator", "retrieved_docs"]:
+    # Init session states and logger
+    for state in ["docs_with_pattern", "docs_valid", "enable_doc_viewer", "communicator", "response", "retrieved_docs"]:
         if state not in st.session_state:
             st.session_state[state] = None
 
@@ -201,19 +151,21 @@ def run_streamlit_app():
 
     logger = st.session_state["logger"]
 
+    # Objects to be initialized only once on first loop
     init_session()
-
     communicator, data_processor = init_communicator_and_processor()
 
     st.title("Title")
-    
+
+    # Initialization sections of UI
+
     st.header("Initialization", divider=section1_color)
 
-    # show current param vals
+    ## Section to show current param vals
 
     st.subheader("Config Params", divider=section1_color)
 
-    # init with default config vals
+    ### Init with default config vals
     token_count_placeholder = st.empty()
     with token_count_placeholder.container(border=False):
         st.write(f"Token limit: {config.user_config['TOKEN_LIMIT']}")
@@ -226,8 +178,8 @@ def run_streamlit_app():
     with ndocs_placeholder.container(border=False):
         st.write(f"Number of docs to retrieve: {config.user_config['N_RETRIEVED_DOCS']}")
 
-    # Document manipulation through Streamlit UI
-
+    ## Section to document manipulation through Streamlit UI
+        
     st.sidebar.header("Manipulate Documents", divider=sidebar1_color)
 
     search_pattern_col, replace_pattern_col = st.sidebar.columns(2)
@@ -238,27 +190,39 @@ def run_streamlit_app():
         update_patterns_json(key=search_pattern, val=replace_pattern)
         docs_with_pattern = data_processor.ret_passages_with_pattern(search_pattern)
         st.sidebar.write(f"{len(docs_with_pattern)} / {len(data_processor.data)} documents with this search pattern.")
+        docs_valid = [p for p in docs_with_pattern if communicator.count_tokens(p) < config.user_config["TOKEN_LIMIT"]]
+        st.sidebar.write(f"{len(docs_valid)} / {len(docs_with_pattern)} documents under token limit.")
+        st.session_state["docs_valid"] = docs_valid
         st.session_state["docs_with_pattern"] = docs_with_pattern
         
-    if st.session_state["docs_with_pattern"]:
+    if st.session_state["docs_valid"]:
         if st.sidebar.button("View these documents"):
             st.session_state["enable_doc_viewer"] = True
 
     if st.session_state["enable_doc_viewer"]:
         st.subheader("Doc Viewer", divider=section1_color)
 
-        if st.session_state["docs_with_pattern"] != None:
+        if st.session_state["docs_valid"] != None:
+            # if st.checkbox("Filter to documents under token limit"):
+            #     # reset index to avoid potential out of bounds error
+            #     st.session_state["search_match_index"] = 0
+            #     docs_used = [p for p in st.session_state["docs_valid"] if communicator.count_tokens(p) <= config.user_config["TOKEN_LIMIT"]]
+            #     st.session_state["docs_valid"] = docs_used 
+
+            n_filtered = len(st.session_state["docs_with_pattern"]) - len(st.session_state["docs_valid"])
+
+            st.write(f"{n_filtered} / {len(st.session_state['docs_with_pattern'])} filtered out due to token limit")
+
             render_doc_viewer(
-                session_document_state=st.session_state["docs_with_pattern"], 
+                docs_name="docs_valid", 
                 index_name="search_match_index",
                 button_name="Next search match",
                 include_text=f"Search: {search_pattern}",
-                
             )
 
     if st.sidebar.button("Clear Patterns"):
         update_patterns_json(clear_json=True)
-        st.session_state["docs_with_pattern"] = None
+        st.session_state["docs_valid"] = None
 
     with open(PATTERNS_FILENAME) as r:
         patterns_json = json.load(r)
@@ -269,9 +233,9 @@ def run_streamlit_app():
 
     st.write(pd.DataFrame(data))
 
-    # Sidebar section to adjust params
+    ## Sidebar section to adjust params
 
-    # Input to change model
+    ### Input to change model
     selected_model = st.sidebar.selectbox(
         'Select a model:',
         (
@@ -285,7 +249,7 @@ def run_streamlit_app():
         with model_placeholder.container(border=False):
             st.write(f"Model: {selected_model}")
 
-    # Input to adjust token limit
+    ### Input to adjust token limit
     token_limit = st.sidebar.text_input("Token Limit")
     
     if token_limit:
@@ -294,7 +258,7 @@ def run_streamlit_app():
         with token_count_placeholder.container(border=False):
             st.write(f"Token limit: {token_limit}")
 
-    # Input to adjust n retrieved docs     
+    ### Input to adjust n retrieved docs     
     ndocs = st.sidebar.text_input("Number of docs to retrieve")
     
     if ndocs:
@@ -303,7 +267,9 @@ def run_streamlit_app():
         with ndocs_placeholder.container(border=False):
             st.write(f"Number of docs to retrieve: {ndocs}")
 
-    # Vectorstore init with manipulated docs
+    # Chatbot interaction section
+
+    ## Vectorstore init with manipulated docs
     st.header("Chatbot QA", divider=section2_color)
 
     load_vs, create_vs = st.columns(2)
@@ -327,41 +293,48 @@ def run_streamlit_app():
     else:
         pass
 
-    
+    ## Send/receive with GPT
     if st.session_state["communicator"] != None:
-
-        #n_patterns = st.sidebar.slider("Manipulate Patterns:", min_value=1, max_value=10)
-
         user_query = st.text_input("Query: ")
 
         if st.button("Get Answer"):
             if user_query:
 
-                # do rag
+                # Perform RAG based on user query
                 response, retrieved_context = st.session_state["communicator"].post_rag_prompt(user_query)
-
-                logger.info(retrieved_context)
                 
+                st.session_state["response"] = response
                 st.session_state["retrieved_docs"] = retrieved_context
 
-                st.subheader("Response:")
-                st.write(response)
+                logger.info(f"USER QUERY: {user_query}")
+                logger.info(f"GPT RESPONSE: {response}")
+
+    if st.session_state["response"] != None:
+        st.subheader("GPT Response", divider=section2_color)
+        response_placeholder = st.empty()
+        with response_placeholder.container(border=True):
+            st.write(st.session_state["response"])
 
     if st.session_state["retrieved_docs"] != None:
 
-        st.subheader("Retrieved Context")
+        st.subheader("Retrieved Context", divider=section2_color)
 
-        render_doc_viewer(
-            session_document_state=st.session_state["retrieved_docs"], 
-            index_name="context_index",
-            button_name="Next retrieved document",
-            #include_text=f"Retrieved documents for query",
-        )
+        if st.checkbox("Show"):
+            render_doc_viewer(
+                docs_name="retrieved_docs", 
+                index_name="context_index",
+                button_name="Next retrieved document",
+                #include_text=f"Retrieved documents for query",
+            )
 
+    # Logging section
+
+    # Capture messages from this session
     st.sidebar.header("Session logs", divider=sidebar2_color)
     with open(LOG_PATH+"streamlit.log") as log:
         st.sidebar.write(log.readlines())     
 
+    # Backend log
     st.sidebar.header("Developer logs", divider=sidebar2_color)
     with open(LOG_PATH+"backend.log") as log:
         st.sidebar.write(log.readlines())

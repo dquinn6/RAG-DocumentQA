@@ -7,7 +7,10 @@ from typing import Optional
 from abc import ABC, abstractmethod
 from src.vectorstore_handlers import VectorstoreHandler
 
-RAG_SYS_ROLE_MSG = "You will answer user queries based on the context provided. You will limit your answers ONLY to the information provided and will NOT provide any external information. If the information needed to answer the query is not present in the input, or no additional context is provided, you will reply with 'I can't answer that based on the provided documents'.'"
+RAG_SYS_ROLE_MSG = "You will answer user queries based on the context provided. \
+You will limit your answers ONLY to the information provided and will NOT provide any external information. \
+If the information needed to answer the query is not present in the input, or no additional context is provided, \
+you will reply with 'I can't answer that based on the provided documents'.'"
 
 
 class Communicator(ABC):
@@ -163,7 +166,8 @@ class GPTCommunicator(Communicator):
             self.system_role = RAG_SYS_ROLE_MSG
 
         top_context = self.vs_hndlr.retrieve_top_documents(query)
-        all_context = "\n\n".join(top_context)
+        # our research has found adding the system role message to the user prompt helps consistency 
+        all_context = RAG_SYS_ROLE_MSG + "\n\n" + "\n\n".join(top_context)
         query = "\n\nBased on the above context, answer the follow question:\n" + query
 
         # cut context down if needed

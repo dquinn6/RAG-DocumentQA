@@ -142,5 +142,9 @@ class WikiTextProcessor():
             return None
         
         return passages
+    
+    def ret_passages_with_pattern(self, pattern: str):
+        passages = self.transform_list_into_passages(self.data)
+        return [p for p in passages if pattern in p]
 
 
