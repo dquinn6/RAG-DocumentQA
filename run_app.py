@@ -153,6 +153,11 @@ def run_streamlit_app():
 
     st.set_page_config(page_title="Page")
 
+    section1_color = "green" # Initializaion section
+    section2_color = "blue" # Chatbot section
+    sidebar1_color = "orange" # Adjust section
+    sidebar2_color = "red" # Log section
+    
     if "logger" not in st.session_state:
         st.session_state["logger"] = create_logger()
     logger = st.session_state["logger"]
@@ -163,46 +168,116 @@ def run_streamlit_app():
 
     st.title("Title")
     
-    st.header("Initialization")
+    st.header("Initialization", divider=section1_color)
 
     # Document manipulation through Streamlit UI
 
-    st.subheader("Document Manipulation")
-
-    st.sidebar.header("Manipulate Documents")
+    st.sidebar.header("Manipulate Documents", divider=sidebar1_color)
 
     search_pattern_col, replace_pattern_col = st.sidebar.columns(2)
     search_pattern = search_pattern_col.text_input("Search Pattern")
     replace_pattern = replace_pattern_col.text_input("Replace Pattern")
 
+    if "docs_with_pattern" not in st.session_state:
+        st.session_state["docs_with_pattern"] = None
+
+    if "enable_doc_viewer" not in st.session_state:
+        st.session_state["enable_doc_viewer"] = False
+
     if st.sidebar.button("Add Pattern"):
         update_patterns_json(key=search_pattern, val=replace_pattern)
+        docs_with_pattern = data_processor.ret_passages_with_pattern(search_pattern)
+        st.sidebar.write(f"{len(docs_with_pattern)} / {len(data_processor.data)} documents with this search pattern.")
+        st.session_state["docs_with_pattern"] = docs_with_pattern
+        
+    if st.session_state["docs_with_pattern"]:
+        if st.sidebar.button("View these documents"):
+            st.session_state["enable_doc_viewer"] = True
+
+    if st.session_state["enable_doc_viewer"]:
+        st.subheader("Doc Viewer", divider=section1_color)
+
+        st.write(f"Search: {search_pattern}")
+
+        docviewer = st.empty() 
+        idx_placeholder = st.empty()
+
+        # Initialize the current index
+        if "current_index" not in st.session_state:
+            st.session_state["current_index"] = 0
+
+        show_next = st.button("next")
+
+        # update index on button click
+        if show_next:
+            # loop back to beginning if at end of list
+            if st.session_state["current_index"] == len(st.session_state["docs_with_pattern"]) - 1:
+                st.session_state["current_index"] = 0
+            else:
+                st.session_state["current_index"] += 1
+
+        with idx_placeholder.container(border=False):
+            st.write(f"Document: {st.session_state.current_index + 1} / {len(st.session_state.docs_with_pattern)}")
+
+        # Show next element in list
+        with docviewer.container(height=300, border=True):
+            st.write(st.session_state["docs_with_pattern"][st.session_state["current_index"]])
 
     if st.sidebar.button("Clear Patterns"):
         update_patterns_json(clear_json=True)
+        st.session_state["docs_with_pattern"] = None
 
     with open(PATTERNS_FILENAME) as r:
         patterns_json = json.load(r)
 
     data = {"search": patterns_json.keys(), "replace": patterns_json.values()}
 
+    st.subheader("Document Manipulation", divider=section1_color)
+
     st.write(pd.DataFrame(data))
 
     # Adjust params
 
-    st.subheader("Changed Config Params")
-    
-    st.sidebar.header("Adjust Config")
+    st.subheader("Config Params", divider=section1_color)
+
+    # init with default config vals
+    token_count_placeholder = st.empty()
+    with token_count_placeholder.container(border=False):
+        st.write(f"Token limit: {config.user_config['TOKEN_LIMIT']}")
+
+    model_placeholder = st.empty()
+    with model_placeholder.container(border=False):
+        st.write(f"Model: {config.user_config['MODEL_NAME']}")
+
+    st.sidebar.header("Adjust Config", divider=sidebar1_color)
+
+    # Input to change model
+
+    selected_model = st.sidebar.selectbox(
+        'Select a model:',
+        (
+            "gpt-3.5-turbo", 
+            "gpt-4", 
+            "gpt-4-32k"
+        )
+    )
+    if selected_model:
+        config.user_config["MODEL_NAME"] = selected_model
+        with model_placeholder.container(border=False):
+            st.write(f"Model: {selected_model}")
+
+    # Input to adjust token limit
     token_limit = st.sidebar.text_input("Token Limit")
     
     if token_limit:
         token_limit = int(token_limit)
         config.user_config["TOKEN_LIMIT"] = token_limit
-        st.write(f"Token limit: {token_limit}")
+        with token_count_placeholder.container(border=False):
+            st.write(f"Token limit: {token_limit}")
 
     # Vectorstore init with manipulated docs
 
-    st.header("Chatbot QA")
+    st.header("Chatbot QA", divider=section2_color)
 
     load_vs, create_vs = st.columns(2)
     # load_vs = st.button("Load Vectorstore")
@@ -243,6 +318,13 @@ def run_streamlit_app():
                 st.subheader("Response:")
                 st.write(response)
 
+                show_context = st.button("Show retrieved docs in Doc Viewer")
+
+                if show_context:
+                    with docviewer.container(height=300, border=True):
+                        st.write(retrieved_context)
+
+
                 logger.info(f"User query: {user_query}")
 
                 # Get user feedback
@@ -258,11 +340,11 @@ def run_streamlit_app():
                 if feedback != "None":
                     logging.info(feedback)
 
-    st.sidebar.header("Session logs")
+    st.sidebar.header("Session logs", divider=sidebar2_color)
     with open(LOG_PATH+"streamlit.log") as log:
         st.sidebar.write(log.readlines())     
 
-    st.sidebar.header("Developer logs")
+    st.sidebar.header("Developer logs", divider=sidebar2_color)
     with open(LOG_PATH+"backend.log") as log:
         st.sidebar.write(log.readlines())
 
