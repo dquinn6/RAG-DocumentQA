@@ -149,6 +149,39 @@ def attach_vectorstore(communicator, load_vectorstore=True, _callback=None):
 
     return communicator
 
+def render_doc_viewer(
+        session_document_state, 
+        index_name="current_index",
+        button_name="Next",
+        include_text=None 
+    ):
+    
+    docviewer = st.empty() 
+    idx_placeholder = st.empty()
+
+    # Initialize the current index
+    if index_name not in st.session_state:
+        st.session_state[index_name] = 0
+
+    show_next = st.button(button_name)
+
+    # update index on button click
+    if show_next:
+        # loop back to beginning if at end of list
+        if st.session_state[index_name] == len(session_document_state) - 1:
+            st.session_state[index_name] = 0
+        else:
+            st.session_state[index_name] += 1
+
+    with idx_placeholder.container(border=False):
+        st.write(f"Document: {st.session_state[index_name] + 1} / {len(session_document_state)}")
+
+    # Show next element in list
+    with docviewer.container(height=300, border=True):
+        if include_text:
+            st.write(include_text)
+        st.write(session_document_state[st.session_state[index_name]])
+        
 def run_streamlit_app():
 
     st.set_page_config(page_title="Page")
@@ -157,9 +190,15 @@ def run_streamlit_app():
     section2_color = "blue" # Chatbot section
     sidebar1_color = "orange" # Adjust section
     sidebar2_color = "red" # Log section
-    
+
+    # init session states    
+    for state in ["docs_with_pattern", "enable_doc_viewer", "communicator", "retrieved_docs"]:
+        if state not in st.session_state:
+            st.session_state[state] = None
+
     if "logger" not in st.session_state:
         st.session_state["logger"] = create_logger()
+
     logger = st.session_state["logger"]
 
     init_session()
@@ -170,6 +209,23 @@ def run_streamlit_app():
     
     st.header("Initialization", divider=section1_color)
 
+    # show current param vals
+
+    st.subheader("Config Params", divider=section1_color)
+
+    # init with default config vals
+    token_count_placeholder = st.empty()
+    with token_count_placeholder.container(border=False):
+        st.write(f"Token limit: {config.user_config['TOKEN_LIMIT']}")
+
+    model_placeholder = st.empty()
+    with model_placeholder.container(border=False):
+        st.write(f"Model: {config.user_config['MODEL_NAME']}")
+
+    ndocs_placeholder = st.empty()
+    with ndocs_placeholder.container(border=False):
+        st.write(f"Number of docs to retrieve: {config.user_config['N_RETRIEVED_DOCS']}")
+
     # Document manipulation through Streamlit UI
 
     st.sidebar.header("Manipulate Documents", divider=sidebar1_color)
@@ -177,12 +233,6 @@ def run_streamlit_app():
     search_pattern_col, replace_pattern_col = st.sidebar.columns(2)
     search_pattern = search_pattern_col.text_input("Search Pattern")
     replace_pattern = replace_pattern_col.text_input("Replace Pattern")
-
-    if "docs_with_pattern" not in st.session_state:
-        st.session_state["docs_with_pattern"] = None
-
-    if "enable_doc_viewer" not in st.session_state:
-        st.session_state["enable_doc_viewer"] = False
 
     if st.sidebar.button("Add Pattern"):
         update_patterns_json(key=search_pattern, val=replace_pattern)
@@ -197,31 +247,14 @@ def run_streamlit_app():
     if st.session_state["enable_doc_viewer"]:
         st.subheader("Doc Viewer", divider=section1_color)
 
-        st.write(f"Search: {search_pattern}")
-
-        docviewer = st.empty() 
-        idx_placeholder = st.empty()
-
-        # Initialize the current index
-        if "current_index" not in st.session_state:
-            st.session_state["current_index"] = 0
-
-        show_next = st.button("next")
-
-        # update index on button click
-        if show_next:
-            # loop back to beginning if at end of list
-            if st.session_state["current_index"] == len(st.session_state["docs_with_pattern"]) - 1:
-                st.session_state["current_index"] = 0
-            else:
-                st.session_state["current_index"] += 1
-
-        with idx_placeholder.container(border=False):
-            st.write(f"Document: {st.session_state.current_index + 1} / {len(st.session_state.docs_with_pattern)}")
-
-        # Show next element in list
-        with docviewer.container(height=300, border=True):
-            st.write(st.session_state["docs_with_pattern"][st.session_state["current_index"]])
+        if st.session_state["docs_with_pattern"] != None:
+            render_doc_viewer(
+                session_document_state=st.session_state["docs_with_pattern"], 
+                index_name="search_match_index",
+                button_name="Next search match",
+                include_text=f"Search: {search_pattern}",
+                
+            )
 
     if st.sidebar.button("Clear Patterns"):
         update_patterns_json(clear_json=True)
@@ -236,23 +269,9 @@ def run_streamlit_app():
 
     st.write(pd.DataFrame(data))
 
-    # Adjust params
-
-    st.subheader("Config Params", divider=section1_color)
-
-    # init with default config vals
-    token_count_placeholder = st.empty()
-    with token_count_placeholder.container(border=False):
-        st.write(f"Token limit: {config.user_config['TOKEN_LIMIT']}")
-
-    model_placeholder = st.empty()
-    with model_placeholder.container(border=False):
-        st.write(f"Model: {config.user_config['MODEL_NAME']}")
-
-    st.sidebar.header("Adjust Config", divider=sidebar1_color)
+    # Sidebar section to adjust params
 
     # Input to change model
-
     selected_model = st.sidebar.selectbox(
         'Select a model:',
         (
@@ -275,13 +294,19 @@ def run_streamlit_app():
         with token_count_placeholder.container(border=False):
             st.write(f"Token limit: {token_limit}")
 
-    # Vectorstore init with manipulated docs
+    # Input to adjust n retrieved docs     
+    ndocs = st.sidebar.text_input("Number of docs to retrieve")
+    
+    if ndocs:
+        ndocs = int(ndocs)
+        config.user_config["N_RETRIEVED_DOCS"] = ndocs
+        with ndocs_placeholder.container(border=False):
+            st.write(f"Number of docs to retrieve: {ndocs}")
 
+    # Vectorstore init with manipulated docs
     st.header("Chatbot QA", divider=section2_color)
 
     load_vs, create_vs = st.columns(2)
-    # load_vs = st.button("Load Vectorstore")
-    # create_vs = st.button("Create New Vectorstore")
 
     if load_vs.button("Load vectorstore"):
         process_data(data_processor)
@@ -300,8 +325,8 @@ def run_streamlit_app():
         st.session_state["communicator"] = communicator
 
     else:
-        if "communicator" not in st.session_state:
-            st.session_state["communicator"] = None
+        pass
+
     
     if st.session_state["communicator"] != None:
 
@@ -315,30 +340,23 @@ def run_streamlit_app():
                 # do rag
                 response, retrieved_context = st.session_state["communicator"].post_rag_prompt(user_query)
 
+                logger.info(retrieved_context)
+                
+                st.session_state["retrieved_docs"] = retrieved_context
+
                 st.subheader("Response:")
                 st.write(response)
 
-                show_context = st.button("Show retrieved docs in Doc Viewer")
+    if st.session_state["retrieved_docs"] != None:
 
-                if show_context:
-                    with docviewer.container(height=300, border=True):
-                        st.write(retrieved_context)
+        st.subheader("Retrieved Context")
 
-
-                logger.info(f"User query: {user_query}")
-
-                # Get user feedback
-
-                feedback = st.radio(
-                    "Select an option:",
-                    [
-                        "None",
-                        "Yes",
-                        "No",
-                    ],
-                )
-                if feedback != "None":
-                    logging.info(feedback)
+        render_doc_viewer(
+            session_document_state=st.session_state["retrieved_docs"], 
+            index_name="context_index",
+            button_name="Next retrieved document",
+            #include_text=f"Retrieved documents for query",
+        )
 
     st.sidebar.header("Session logs", divider=sidebar2_color)
     with open(LOG_PATH+"streamlit.log") as log:
