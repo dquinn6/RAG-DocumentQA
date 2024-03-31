@@ -47,7 +47,7 @@ def create_logger(
     logger = logging.getLogger(name)
     logger.propagate = False
     logger.setLevel(level)
-    # if no handler present, add one
+    # If no handler present, add one
     if(
         sum([isinstance(handler, RotatingFileHandler) for handler in logger.handlers]) == 0
     ):
@@ -64,8 +64,8 @@ def create_logger(
 def render_doc_viewer(
         docs_name="documents", 
         index_name="current_index",
-        button_name="next",
-        include_text=None 
+        include_text=None,
+        unique_key="key",
     ):
     
     docviewer = st.empty() 
@@ -75,15 +75,19 @@ def render_doc_viewer(
     if index_name not in st.session_state:
         st.session_state[index_name] = 0
 
-    # reset if user filters some docs and current idx is out of bounds
+    # Reset if user filters some docs and current idx is out of bounds
     if st.session_state[index_name] > len(st.session_state[docs_name]) - 1:
         st.session_state[index_name] = 0
 
-    show_next = st.button(button_name)
+    show_next = st.button(
+        label="Next document" if not st.session_state.disable_flg else "Disabled during process", 
+        disabled=st.session_state.disable_flg,
+        key=unique_key,
+    )
 
-    # update index on button click
+    # Update index on button click
     if show_next:
-        # # loop back to beginning if at end of list
+        # Loop back to beginning if at end of list
         if st.session_state[index_name] >= len(st.session_state[docs_name]) - 1:
             st.session_state[index_name] = 0
         else:
@@ -102,15 +106,30 @@ def render_doc_viewer(
         else:
             st.write(st.session_state[docs_name][st.session_state[index_name]])
 
+def gather_docs(data_processor, communicator, search_pattern=None, replace_pattern=None, verbose=True):
+    if search_pattern == None or replace_pattern == None:
+        if verbose:
+            st.sidebar.write("Please input search and replace patterns")
+    else:
+        update_patterns_json(key=search_pattern, val=replace_pattern)
+        docs_with_pattern = data_processor.ret_passages_with_pattern(search_pattern)
+        if verbose:
+            st.sidebar.write(f"{len(docs_with_pattern)} / {len(data_processor.data)} documents with this search pattern.")
+        docs_valid = [p for p in docs_with_pattern if communicator.count_tokens(p) < config.user_config["TOKEN_LIMIT"]]
+        if verbose:
+            st.sidebar.write(f"{len(docs_valid)} / {len(docs_with_pattern)} documents under token limit.")
+        st.session_state["docs_valid"] = docs_valid
+        st.session_state["docs_with_pattern"] = docs_with_pattern
+ 
 
 @st.cache_data
 def init_session():
-    # clear logs
+    # Clear logs
     with open(LOG_PATH+"streamlit.log", "w") as _:
         pass
     with open(LOG_PATH+"backend.log", "w") as _:
         pass
-    #clear patterns file
+    # Clear patterns file
     update_patterns_json(clear_json=True)
 
 @st.cache_resource
@@ -131,9 +150,12 @@ def init_communicator_and_processor():
     return communicator, data_processor
 
         
+def btn_callbk():
+    st.session_state.disable_flg = not st.session_state.disable_flg
+
 def run_streamlit_app():
 
-    st.set_page_config(page_title="Page")
+    st.set_page_config(page_title="App", layout="wide")
 
     # Define divider colors for different sections
     section1_color = "green" # Initializaion section
@@ -146,6 +168,9 @@ def run_streamlit_app():
         if state not in st.session_state:
             st.session_state[state] = None
 
+    if "disable_flg" not in st.session_state:
+        st.session_state["disable_flg"] = False
+
     if "logger" not in st.session_state:
         st.session_state["logger"] = create_logger()
 
@@ -155,11 +180,33 @@ def run_streamlit_app():
     init_session()
     communicator, data_processor = init_communicator_and_processor()
 
-    st.title("Title")
+    st.title("Manipulate WikiText2 QA")
+    st.header("About")
+    st.write("This application is a RAG-based system using GPT to answer questions on the WikiText2 dataset, \
+    which is used as a set of dummy documents for this demo. Since GPT has already been trained on content \
+    in these documents and can answer related questions without RAG, the functionality to manipulate them has \
+    been incorporated to better demonstrate GPT's usage of the given information rather than it's internal knowledge."
+    )
+
+    st.header("Usage")
+    st.write("The Initialization section below lists the current configuration for this session. Use the input sections\
+    in the left sidebar to adjust these params before creating the system. Here you will also be able to manipulate the documents \
+    GPT will be using to answer questions. When you provide search and replace text and add the pattern, a viewer will appear to show\
+    all documents that have this search string. You can use this viewer to read the docs and create questions GPT should be able to answer.\
+    You can add as many search and replace patterns as you like; the Document Manipulation section will keep track of every added pattern.\
+    \n\
+    \nOnce the configuration is done and document manipulation has been set, move down to the Chatbot QA section and click the 'Create vectorstore' button to build a vectorstore database\
+    with the manipulated documents. While this is processing, you won't be able to interact with other parts of the UI until the vectostore is created.\
+    Alternatively, you can click the 'Load vectorstore' button to utilize the vectorstore from the previous section and avoid rebuilding.\
+    \n\
+    \nAfter the vectorstore is set, you'll be able to interact with GPT by sending queries and viewing responses based off of the manipulated documents!"
+    )
 
     # Initialization sections of UI
 
     st.header("Initialization", divider=section1_color)
+
+    st.write(f"This section ({section1_color}) shows the current configuration that will be used when creating the vectorstore.")
 
     ## Section to show current param vals
 
@@ -178,37 +225,81 @@ def run_streamlit_app():
     with ndocs_placeholder.container(border=False):
         st.write(f"Number of docs to retrieve: {config.user_config['N_RETRIEVED_DOCS']}")
 
-    ## Section to document manipulation through Streamlit UI
+    ## Sidebar section to adjust params
+        
+    st.sidebar.header("Choose model", divider=sidebar1_color)
+
+    ### Input to change model
+    selected_model = st.sidebar.selectbox(
+        'Select a model:',
+        (
+            "gpt-3.5-turbo", 
+            "gpt-4", 
+            "gpt-4-32k"
+        ),
+        disabled=st.session_state.disable_flg
+    )
+    if selected_model:
+        config.user_config["MODEL_NAME"] = selected_model
+        with model_placeholder.container(border=False):
+            st.write(f"Model: {selected_model}")
+
+    ## Section for document manipulation through Streamlit UI
         
     st.sidebar.header("Manipulate Documents", divider=sidebar1_color)
 
+    ### Capture user input for search and replace
     search_pattern_col, replace_pattern_col = st.sidebar.columns(2)
-    search_pattern = search_pattern_col.text_input("Search Pattern")
-    replace_pattern = replace_pattern_col.text_input("Replace Pattern")
+    search_pattern = search_pattern_col.text_input("Search Pattern", disabled=st.session_state.disable_flg)
+    replace_pattern = replace_pattern_col.text_input("Replace Pattern", disabled=st.session_state.disable_flg)
 
-    if st.sidebar.button("Add Pattern"):
-        update_patterns_json(key=search_pattern, val=replace_pattern)
-        docs_with_pattern = data_processor.ret_passages_with_pattern(search_pattern)
-        st.sidebar.write(f"{len(docs_with_pattern)} / {len(data_processor.data)} documents with this search pattern.")
-        docs_valid = [p for p in docs_with_pattern if communicator.count_tokens(p) < config.user_config["TOKEN_LIMIT"]]
-        st.sidebar.write(f"{len(docs_valid)} / {len(docs_with_pattern)} documents under token limit.")
-        st.session_state["docs_valid"] = docs_valid
-        st.session_state["docs_with_pattern"] = docs_with_pattern
-        
-    if st.session_state["docs_valid"]:
-        if st.sidebar.button("View these documents"):
+    add_button_col, clear_button_col = st.sidebar.columns([1,1])
+
+    with add_button_col:
+        if st.sidebar.button(
+            label="Add Pattern" if not st.session_state.disable_flg else "Disabled during process", 
+            disabled=st.session_state.disable_flg,
+            key="add"
+        ):
+            gather_docs(data_processor, communicator, search_pattern, replace_pattern, verbose=True)
             st.session_state["enable_doc_viewer"] = True
+
+    with clear_button_col:
+        if st.sidebar.button(
+            "Clear Patterns" if not st.session_state.disable_flg else "Disabled during process", 
+            disabled=st.session_state.disable_flg,
+            key="clear"
+        ):
+            update_patterns_json(clear_json=True)
+            st.session_state["docs_valid"] = None
+            st.session_state["enable_doc_viewer"] = False
+            
+    ### Input to adjust token limit
+    token_limit = st.sidebar.text_input("Token Limit", disabled=st.session_state.disable_flg)
+
+    # Update docs if user input a token limit and it's different from config val
+    if token_limit:
+        token_limit = int(token_limit)
+        if config.user_config["TOKEN_LIMIT"] != token_limit:
+            config.user_config["TOKEN_LIMIT"] = token_limit
+            with token_count_placeholder.container(border=False):
+                st.write(f"Token limit: {token_limit}")
+            # Update docs with new token limit
+            gather_docs(data_processor, communicator, search_pattern, replace_pattern, verbose=False)
+            
+    ### Input to adjust n retrieved docs     
+    ndocs = st.sidebar.text_input("Number of docs to retrieve", disabled=st.session_state.disable_flg)
+    
+    if ndocs:
+        ndocs = int(ndocs)
+        config.user_config["N_RETRIEVED_DOCS"] = ndocs
+        with ndocs_placeholder.container(border=False):
+            st.write(f"Number of docs to retrieve: {ndocs}")
 
     if st.session_state["enable_doc_viewer"]:
         st.subheader("Doc Viewer", divider=section1_color)
 
         if st.session_state["docs_valid"] != None:
-            # if st.checkbox("Filter to documents under token limit"):
-            #     # reset index to avoid potential out of bounds error
-            #     st.session_state["search_match_index"] = 0
-            #     docs_used = [p for p in st.session_state["docs_valid"] if communicator.count_tokens(p) <= config.user_config["TOKEN_LIMIT"]]
-            #     st.session_state["docs_valid"] = docs_used 
-
             n_filtered = len(st.session_state["docs_with_pattern"]) - len(st.session_state["docs_valid"])
 
             st.write(f"{n_filtered} / {len(st.session_state['docs_with_pattern'])} filtered out due to token limit")
@@ -216,13 +307,9 @@ def run_streamlit_app():
             render_doc_viewer(
                 docs_name="docs_valid", 
                 index_name="search_match_index",
-                button_name="Next search match",
                 include_text=f"Search: {search_pattern}",
+                unique_key="stored_documents"
             )
-
-    if st.sidebar.button("Clear Patterns"):
-        update_patterns_json(clear_json=True)
-        st.session_state["docs_valid"] = None
 
     with open(PATTERNS_FILENAME) as r:
         patterns_json = json.load(r)
@@ -233,40 +320,6 @@ def run_streamlit_app():
 
     st.write(pd.DataFrame(data))
 
-    ## Sidebar section to adjust params
-
-    ### Input to change model
-    selected_model = st.sidebar.selectbox(
-        'Select a model:',
-        (
-            "gpt-3.5-turbo", 
-            "gpt-4", 
-            "gpt-4-32k"
-        )
-    )
-    if selected_model:
-        config.user_config["MODEL_NAME"] = selected_model
-        with model_placeholder.container(border=False):
-            st.write(f"Model: {selected_model}")
-
-    ### Input to adjust token limit
-    token_limit = st.sidebar.text_input("Token Limit")
-    
-    if token_limit:
-        token_limit = int(token_limit)
-        config.user_config["TOKEN_LIMIT"] = token_limit
-        with token_count_placeholder.container(border=False):
-            st.write(f"Token limit: {token_limit}")
-
-    ### Input to adjust n retrieved docs     
-    ndocs = st.sidebar.text_input("Number of docs to retrieve")
-    
-    if ndocs:
-        ndocs = int(ndocs)
-        config.user_config["N_RETRIEVED_DOCS"] = ndocs
-        with ndocs_placeholder.container(border=False):
-            st.write(f"Number of docs to retrieve: {ndocs}")
-
     # Chatbot interaction section
 
     ## Vectorstore init with manipulated docs
@@ -274,30 +327,37 @@ def run_streamlit_app():
 
     load_vs, create_vs = st.columns(2)
 
-    if load_vs.button("Load vectorstore"):
+    if load_vs.button("Load vectorstore", key="load"):
         process_data(data_processor)
         communicator = attach_vectorstore(communicator, load_vectorstore=True)
         st.session_state["communicator"] = communicator
 
-    elif create_vs.button("Create new vectorstore"):
-        process_data(data_processor)
-        result_holder = st.empty()
+    elif create_vs.button("Create new vectorstore", on_click=btn_callbk, key="create"):
+        # Disable user input during process to avoid breaking
+        with st.spinner('Wait for process to finish...'):
+            st.session_state["disable_flg"] = True 
+            process_data(data_processor)
+            result_holder = st.empty()
 
-        def progress(p, i):
-            with result_holder.container():
-                st.progress(p, f'Progress: Documents Processed={i}')
+            def progress(p, i):
+                with result_holder.container():
+                    st.progress(p, f'Progress: Documents Processed={i}')
 
-        communicator = attach_vectorstore(communicator, load_vectorstore=False, _callback=progress)
-        st.session_state["communicator"] = communicator
-
+            communicator = attach_vectorstore(communicator, load_vectorstore=False, _callback=progress)
+            st.session_state["communicator"] = communicator
     else:
         pass
 
     ## Send/receive with GPT
     if st.session_state["communicator"] != None:
+        # Enable buttons and refresh
+        if st.session_state["disable_flg"] == True:
+            st.session_state["disable_flg"] = False
+            st.rerun()
+
         user_query = st.text_input("Query: ")
 
-        if st.button("Get Answer"):
+        if st.button("Get Answer", key="answer"):
             if user_query:
 
                 # Perform RAG based on user query
@@ -323,8 +383,7 @@ def run_streamlit_app():
             render_doc_viewer(
                 docs_name="retrieved_docs", 
                 index_name="context_index",
-                button_name="Next retrieved document",
-                #include_text=f"Retrieved documents for query",
+                unique_key="retrieved_documents"
             )
 
     # Logging section
