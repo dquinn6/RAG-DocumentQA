@@ -1,7 +1,5 @@
-""" Class to handle the creation, loading, and retrieval from our vectorstore using a set of documents. """
+""" Classes to handle the creation, loading, and retrieval from our vectorstore of given documents. """
 
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_core.vectorstores import VectorStoreRetriever
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import CSVLoader

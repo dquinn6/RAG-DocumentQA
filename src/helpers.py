@@ -6,15 +6,17 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 LOG_PATH = config.user_config["LOG_PATH"]
 PATTERNS_FILENAME = config.user_config["PATTERNS_FILENAME"]
 
-def update_patterns_json(key = "", val = "", clear_json=False):
+def update_patterns_json(key = None, val = None, clear_json=False):
 
     with open(PATTERNS_FILENAME) as r:
         patterns_json = json.load(r)
 
     if clear_json:
         patterns_json = {}
+
     else:
-        patterns_json.update({key: val})
+        if ((key not in [None, ""]) and (val not in [None, ""])):
+            patterns_json.update({key: val})
 
     with open(PATTERNS_FILENAME, "w") as w:
         json.dump(patterns_json, w)
