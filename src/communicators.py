@@ -7,11 +7,12 @@ from typing import Optional
 from abc import ABC, abstractmethod
 from src.vectorstore_handlers import VectorstoreHandler
 
-RAG_SYS_ROLE_MSG = "You will answer user queries based on the context provided. \
-You will limit your answers ONLY to the information provided and will NOT provide any external information. \
-If the information needed to answer the query is not present in the input, or no additional context is provided, \
-you will reply with 'I can't answer that based on the provided documents'.'"
-
+RAG_SYS_ROLE_MSG = "You will answer user queries based on the context documents provided. Your responses MUST be grounded from the provided context.\
+YOU WILL LIMIT YOUR KNOWLEDGE ONLY TO THE INFORMATION PROVIDED. YOU WILL NOT PROVIDE ANY EXTERNAL INFORMATION. \
+If information needed to answer the user query is not in the documents provided, you will reply with 'Sorry, I can't answer that based on the provided documents'.\
+"
+RAG_CONTEXT_PREFACE = "Please use the following context to generate your response, which must not contain outside information:\n\n"
+RAG_QUERY_PREFACE = "\n\nBased solely on the context provided above, please answer the following user query:\n"
 
 class Communicator(ABC):
     def __init__(self):
@@ -71,6 +72,7 @@ class GPTCommunicator(Communicator):
         self.max_prompt_tokens = model_max_tokens[model_name] -  250 # buffer for response tokens
         self.system_role = "You are a helpful AI assistant." # default role
         self.total_tokens_used = 0
+        self.temperature = 0 # keep as 0 to minimize responses straying from provided documents
         
     def post_prompt(self, text: str, truncate: bool=True) -> Optional[str]:
         """ Method to communicate with GPT.
@@ -91,7 +93,8 @@ class GPTCommunicator(Communicator):
                 messages = [
                     {"role": "system", "content": str(self.system_role)},
                     {"role": "user", "content": str(text)}
-                ]
+                ],
+                temperature=self.temperature
             )
             self.last_response = response
             self.total_tokens_used += int(response.usage.total_tokens)
@@ -122,6 +125,7 @@ class GPTCommunicator(Communicator):
     
     def truncate_text(self, text: str, token_limit: int) -> Optional[str]:
         """ Method to truncate a string to a specified token limit.
+        Parses by sentence period to not truncate in the middle of a sentence.
 
         Args:
             text (str): Input text to truncate.
@@ -166,9 +170,8 @@ class GPTCommunicator(Communicator):
             self.system_role = RAG_SYS_ROLE_MSG
 
         top_context = self.vs_hndlr.retrieve_top_documents(query)
-        # our research has found adding the system role message to the user prompt helps consistency 
-        all_context = RAG_SYS_ROLE_MSG + "\n\n" + "\n\n".join(top_context)
-        query = "\n\nBased on the above context, answer the follow question:\n" + query
+        all_context = RAG_CONTEXT_PREFACE + "\n\n".join(top_context)
+        query = RAG_QUERY_PREFACE + query
 
         # cut context down if needed
         buffer_token_space = self.count_tokens(query)
