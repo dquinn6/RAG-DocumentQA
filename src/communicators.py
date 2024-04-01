@@ -14,24 +14,36 @@ If information needed to answer the user query is not in the documents provided,
 RAG_CONTEXT_PREFACE = "Please use the following context to generate your response, which must not contain outside information:\n\n"
 RAG_QUERY_PREFACE = "\n\nBased solely on the context provided above, please answer the following user query:\n"
 
+
+def vs_required(function):
+    def wrapper(self, *args, **kwargs):
+        if self.vs_hndlr == None:
+            raise ValueError("vs_hndlr not set; pass VectostoreHandler upon init or invoke set_vectorstore_handler() before using this method.")
+        return function(self, *args, **kwargs)
+    return wrapper
+
+
 class Communicator(ABC):
-    def __init__(self):
-        pass
+    def __init__(self, vectorstore_handler: Optional[VectorstoreHandler] = None):
+        self.vs_hndlr = vectorstore_handler
+
+    def set_vectorstore_handler(self, vectorstore_handler: Optional[VectorstoreHandler] = None):
+        """ A method to set the vectorstore handler post-init. """
+        self.vs_hndlr = vectorstore_handler
 
     @abstractmethod
     def post_prompt(self):
+        """ A method to send/receive messages with LLM, whether through API post or local process. """
         pass
 
     @abstractmethod
     def count_tokens(self):
-        pass
-
-    @abstractmethod
-    def truncate_text(self):
+        """ A method to count tokens in text using respective LLM's tokenizer. """
         pass
 
     @abstractmethod
     def post_rag_prompt(self):
+        """ A method for posting with RAG; add vs_required decorator when implementing in subclass """
         pass
 
 
@@ -50,11 +62,9 @@ class GPTCommunicator(Communicator):
         Raises:
             ValueError: Raised when model_name is not a valid GPT model.
         """        
-        super().__init__()
+        super().__init__(vectorstore_handler)
         # init client with api key 
         self.client = OpenAI(api_key=api_key)
-
-        self.vs_hndlr = vectorstore_handler
         
         # context window limits; found at https://platform.openai.com/docs/models
         model_max_tokens = { 
@@ -157,14 +167,8 @@ class GPTCommunicator(Communicator):
         
         return truncated_text
     
-    def set_vectorstore_handler(self, vectorstore_handler: Optional[VectorstoreHandler] = None):
-        self.vs_hndlr = vectorstore_handler
-    
+    @vs_required
     def post_rag_prompt(self, query: str):
-        
-        if self.vs_hndlr == None:
-            logging.error("Cannot perform RAG without an initialized vectorstore handler.")
-            return None
         
         if self.system_role != RAG_SYS_ROLE_MSG:
             self.system_role = RAG_SYS_ROLE_MSG

@@ -11,7 +11,6 @@ from abc import ABC, abstractmethod
 
 from tqdm import tqdm
 import logging
-import sys
 import os
 
 class VectorstoreHandler(ABC):
@@ -23,14 +22,17 @@ class VectorstoreHandler(ABC):
 
     @abstractmethod
     def create_local_vectorstore(self):
+        """ A method to generate a vectorstore index from a set of docs and write to local file. """
         pass
 
     @abstractmethod
     def load_local_vectorstore(self):
+        """ A method to load the currently saved local vectorstore index. """
         pass
 
     @abstractmethod
     def retrieve_top_documents(self):
+        """ A method to retrieve top document matches for RAG prompting. """
         pass
 
 

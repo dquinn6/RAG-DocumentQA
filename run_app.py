@@ -1,16 +1,20 @@
 import os
 import logging
-from logging.handlers import RotatingFileHandler
 from config import config
 import streamlit as st
 import json
-from src.communicators import GPTCommunicator
-from src.data_processors import WikiTextProcessor
 import pandas as pd
-from src.helpers import update_patterns_json, process_data, attach_vectorstore
+from src.utils import update_patterns_json
+from src.factories import ModelFactory, DataProcessorFactory
+from src.app_helpers import btn_lock_callback, get_model_factory_name, create_logger, gather_docs, render_doc_viewer
 
 LOG_PATH = config.user_config["LOG_PATH"]
 PATTERNS_FILENAME = config.user_config["PATTERNS_FILENAME"]
+
+# Define dataset and vectorstore to use in this app
+DATASET_NAME = "WikiText"
+VECTORSTORE_NAME = "Langchain"
+MODEL_NAME = config.user_config["MODEL_NAME"] # name that matches openai names; needs to be mapped to defined factory names
 
 # Direct src code logging to backend.log through logging.config
 logging.basicConfig(
@@ -20,110 +24,9 @@ logging.basicConfig(
     datefmt='%H:%M:%S',
     level=logging.INFO
 )
-
-# Direct UI logging to streamlit.log through logger object
-def create_logger(
-    name: str = "logger_",
-    level: str = "INFO",
-    filename: str = LOG_PATH+"streamlit.log",
-    max_log_size: int = 1024 * 1024 * 1024, #100 MB
-    backup_count: int = 1,
-):
-    """ Create logger for handling streamlit IO
-
-    Solution to duplicate log messages; found at https://discuss.streamlit.io/t/streamlit-duplicates-log-messages-when-stream-handler-is-added/16426
-
-    Args:
-        name (str, optional): _description_. Defaults to "logger_".
-        level (str, optional): _description_. Defaults to "DEBUG".
-        filename (str, optional): _description_. Defaults to "app.log".
-        max_log_size (int, optional): _description_. Defaults to 1024*1024*1024.
-
-    Returns:
-        _type_: _description_
-    """
-    if not os.path.exists(LOG_PATH):
-        os.mkdir(LOG_PATH)
-    logger = logging.getLogger(name)
-    logger.propagate = False
-    logger.setLevel(level)
-    # If no handler present, add one
-    if(
-        sum([isinstance(handler, RotatingFileHandler) for handler in logger.handlers]) == 0
-    ):
-        handler = RotatingFileHandler(
-            filename, maxBytes=max_log_size, backupCount=backup_count,
-        )
-        handler.setFormatter(
-            logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        )
-        logger.addHandler(handler)
-    
-    return logger
-
-def render_doc_viewer(
-        docs_name="documents", 
-        index_name="current_index",
-        include_text=None,
-        unique_key="key",
-    ):
-    
-    docviewer = st.empty() 
-    idx_placeholder = st.empty()
-
-    # Initialize the current index
-    if index_name not in st.session_state:
-        st.session_state[index_name] = 0
-
-    # Reset if user filters some docs and current idx is out of bounds
-    if st.session_state[index_name] > len(st.session_state[docs_name]) - 1:
-        st.session_state[index_name] = 0
-
-    show_next = st.button(
-        label="Next document" if not st.session_state.disable_flg else "Disabled during process", 
-        disabled=st.session_state.disable_flg,
-        key=unique_key,
-    )
-
-    # Update index on button click
-    if show_next:
-        # Loop back to beginning if at end of list
-        if st.session_state[index_name] >= len(st.session_state[docs_name]) - 1:
-            st.session_state[index_name] = 0
-        else:
-            st.session_state[index_name] += 1
-
-    with idx_placeholder.container(border=False):
-        if len(st.session_state[docs_name]) != 0:
-            st.write(f"Document: {st.session_state[index_name] + 1} / {len(st.session_state[docs_name])}")
-
-    # Show next element in list
-    with docviewer.container(height=300, border=True):
-        if include_text:
-            st.write(include_text)
-        if len(st.session_state[docs_name]) == 0:
-            st.write("No documents with this criteria could be found; try a larger token limit or different search pattern.")
-        else:
-            st.write(st.session_state[docs_name][st.session_state[index_name]])
-
-def gather_docs(data_processor, communicator, search_pattern=None, replace_pattern=None, verbose=True):
-    if search_pattern == None or replace_pattern == None:
-        if verbose:
-            st.sidebar.write("Please input search and replace patterns")
-    else:
-        update_patterns_json(key=search_pattern, val=replace_pattern)
-        docs_with_pattern = data_processor.ret_passages_with_pattern(search_pattern)
-        if verbose:
-            st.sidebar.write(f"{len(docs_with_pattern)} / {len(data_processor.data)} documents with this search pattern.")
-        docs_valid = [p for p in docs_with_pattern if communicator.count_tokens(p) < config.user_config["TOKEN_LIMIT"]]
-        if verbose:
-            st.sidebar.write(f"{len(docs_valid)} / {len(docs_with_pattern)} documents under token limit.")
-        st.session_state["docs_valid"] = docs_valid
-        st.session_state["docs_with_pattern"] = docs_with_pattern
  
-
 @st.cache_data
-def init_session():
+def init_files():
     # Clear logs
     with open(LOG_PATH+"streamlit.log", "w") as _:
         pass
@@ -132,26 +35,20 @@ def init_session():
     # Clear patterns file
     update_patterns_json(clear_json=True)
 
+
 @st.cache_resource
 def init_communicator_and_processor():
 
-    api_key = config.user_config["ACCESS_TOKEN"]
-    model_name = config.user_config["MODEL_NAME"]
-    verbose = config.user_config["VERBOSE"]
+    # Since user will manipulate docs from UI, init with regular communicator first
 
-    communicator = GPTCommunicator(api_key=api_key, model_name=model_name)
+    model_factory = ModelFactory() # return so we can redefine RAG later
+    communicator = model_factory.create_model(get_model_factory_name(MODEL_NAME, rag=False))
 
-    data_processor = WikiTextProcessor(
-        dataset_version = "wikitext-2-raw-v1", 
-        split = "train", 
-        communicator = communicator,
-        verbose = verbose
-    )
-    return communicator, data_processor
+    data_factory = DataProcessorFactory()
+    data_processor = data_factory.create_processor(DATASET_NAME, communicator)
 
-        
-def btn_callbk():
-    st.session_state.disable_flg = not st.session_state.disable_flg
+    return communicator, data_processor, model_factory
+
 
 def run_streamlit_app():
 
@@ -177,8 +74,8 @@ def run_streamlit_app():
     logger = st.session_state["logger"]
 
     # Objects to be initialized only once on first loop
-    init_session()
-    communicator, data_processor = init_communicator_and_processor()
+    init_files()
+    communicator, data_processor, model_factory = init_communicator_and_processor()
 
     st.title("Manipulate WikiText2 QA")
     st.header("About")
@@ -321,32 +218,40 @@ def run_streamlit_app():
     st.write(pd.DataFrame(data))
 
     # Chatbot interaction section
-
-    ## Vectorstore init with manipulated docs
+    
     st.header("Chatbot QA", divider=section2_color)
+
+    ## Vectorstore creation with user defined params from UI input
 
     load_vs, create_vs = st.columns(2)
 
     if load_vs.button("Load vectorstore", key="load"):
-        process_data(data_processor)
-        communicator = attach_vectorstore(communicator, load_vectorstore=True)
+        communicator = model_factory.create_model(
+            model_name = get_model_factory_name(MODEL_NAME, rag=True), 
+            dataset_name=DATASET_NAME, 
+            vectorstore_name=VECTORSTORE_NAME,
+            new_vectorstore=False,
+        )
         st.session_state["communicator"] = communicator
 
-    elif create_vs.button("Create new vectorstore", on_click=btn_callbk, key="create"):
+    if create_vs.button("Create new vectorstore", on_click=btn_lock_callback, key="create"):
         # Disable user input during process to avoid breaking
         with st.spinner('Wait for process to finish...'):
             st.session_state["disable_flg"] = True 
-            process_data(data_processor)
-            result_holder = st.empty()
+            progress_holder = st.empty()
 
             def progress(p, i):
-                with result_holder.container():
+                with progress_holder.container():
                     st.progress(p, f'Progress: Documents Processed={i}')
 
-            communicator = attach_vectorstore(communicator, load_vectorstore=False, _callback=progress)
+            communicator = model_factory.create_model(
+                model_name = get_model_factory_name(MODEL_NAME, rag=True), 
+                dataset_name=DATASET_NAME, 
+                vectorstore_name=VECTORSTORE_NAME,
+                new_vectorstore=True,
+                _callback = progress
+            )
             st.session_state["communicator"] = communicator
-    else:
-        pass
 
     ## Send/receive with GPT
     if st.session_state["communicator"] != None:

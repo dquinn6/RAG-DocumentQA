@@ -6,25 +6,26 @@ import numpy as np
 import pandas as pd
 import os
 from src.communicators import Communicator
+from src.utils import manipulate_passages
+from abc import ABC, abstractmethod
 
-def manipulate_passages(passages, replace_pattern, verbose=True):
-    #return list(map(lambda x: x.replace(replace_pattern[0], replace_pattern[1]), passages))
 
-    manipulated_count = 0
-    manipulated_passages = []
-    for passage in passages:
-        if replace_pattern[0] in passage:
-            passage = passage.replace(replace_pattern[0], replace_pattern[1])
-            manipulated_count += 1
+class DataProcessor(ABC):
+    def __init__(self):
+        pass
 
-        manipulated_passages.append(passage)
+    @abstractmethod
+    def process_text(self):
+        """ A method to process raw data into a list of text for vectorstore creation. """
+        pass
 
-    if verbose:
-        logging.info(f"{manipulated_count} passages manipulated; '{replace_pattern[0]}' -> '{replace_pattern[1]}'")
+    @abstractmethod
+    def ret_passages_with_pattern(self):
+        """ A method to return list of passages containing a text pattern. """
+        pass
 
-    return manipulated_passages
 
-class WikiTextProcessor():
+class WikiTextProcessor(DataProcessor):
 
     def __init__(
             self, 
@@ -162,5 +163,3 @@ class WikiTextProcessor():
     def ret_passages_with_pattern(self, pattern: str):
         passages = self.transform_list_into_passages(self.data)
         return [p for p in passages if pattern in p]
-
-

@@ -13,4 +13,5 @@ def load_config_yml(filename):
     return config
 
 # store user config as var
-user_config = load_config_yml("config/user_config.yml")
+filepath = "config/user_config.yml"
+user_config = load_config_yml(filepath)
