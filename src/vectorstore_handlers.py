@@ -1,6 +1,6 @@
 """ Classes to handle the creation, loading, and retrieval from our vectorstore of given documents. """
 
-from langchain.text_splitter import CharacterTextSplitter
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import CSVLoader
 
@@ -68,8 +68,8 @@ class LangchainVectorstore(VectorstoreHandler):
     def chunk_data(self, chunk_size: int = 2048, chunk_overlap: int = 50) -> None:
 
         try:
-            text_splitter = CharacterTextSplitter(
-                        chunk_size=chunk_size, chunk_overlap=chunk_overlap
+            text_splitter = RecursiveCharacterTextSplitter(
+                        chunk_size=chunk_size, chunk_overlap=chunk_overlap,
                     )
             self.data = text_splitter.split_documents(self.data)
             if self.verbose:
