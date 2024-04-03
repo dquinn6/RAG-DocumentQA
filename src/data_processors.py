@@ -108,13 +108,14 @@ class WikiTextProcessor(DataProcessor):
     def process_text(
             self, 
             token_limit: Optional[int] = None,
-            save_path: str = os.getcwd() + os.sep,
+            save_path: Optional[str] = None,
             save_filename: str = "processed_data",
             manipulate_pattern: Optional[List[Tuple[str, str]]] = None,
         ):
 
-        if not os.path.exists(save_path):
-            os.mkdir(save_path)
+        if save_path is not None:
+            if not os.path.exists(save_path):
+                os.mkdir(save_path)
 
         passages = self.transform_list_into_passages(self.data)
         
@@ -145,14 +146,15 @@ class WikiTextProcessor(DataProcessor):
             write_df = pd.DataFrame()
             write_df["text"] = passages
 
-            save_to = save_path + save_filename
-            if save_to[-4:] != ".csv":
-                save_to += ".csv"
+            if save_path is not None:
+                save_to = save_path + save_filename
+                if save_to[-4:] != ".csv":
+                    save_to += ".csv"
 
-            write_df.to_csv(save_to)
+                write_df.to_csv(save_to)
 
-            if self.verbose:
-                logging.info(f"Processed data saved to: {save_to}")
+                if self.verbose:
+                    logging.info(f"Processed data saved to: {save_to}")
 
         except Exception as e:
             logging.error(f"Failed to process data: {e}")
