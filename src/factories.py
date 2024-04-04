@@ -1,4 +1,4 @@
-from config import config
+from src.config import config
 from src.communicators import GPTCommunicator
 from src.data_processors import WikiTextProcessor
 from src.vectorstore_handlers import LangchainVectorstore
@@ -11,7 +11,7 @@ MODEL_NAME = config.user_config["MODEL_NAME"]
 SAVE_PATH = config.user_config["SAVE_PATH"]
 SEARCH_TYPE = config.user_config["SEARCH_TYPE"]
 N_RETRIEVED_DOCS = config.user_config["N_RETRIEVED_DOCS"]
-TOKEN_LIMIT = config.user_config["TOKEN_LIMIT"]
+#TOKEN_LIMIT = config.user_config["TOKEN_LIMIT"]
 VERBOSE = config.user_config["VERBOSE"]
 PATTERNS_FILENAME = config.user_config["PATTERNS_FILENAME"]
 
@@ -37,7 +37,7 @@ class DataProcessorFactory:
                 patterns = list(json.load(f).items())
 
             _ = processor.process_text(
-                token_limit = TOKEN_LIMIT, 
+                token_limit = config.user_config["TOKEN_LIMIT"], 
                 save_path = SAVE_PATH,
                 save_filename = "processed_data.csv",
                 manipulate_pattern = patterns

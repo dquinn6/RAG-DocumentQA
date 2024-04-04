@@ -1,5 +1,5 @@
 import json
-from config import config
+from src.config import config
 import yaml
 import logging
 from importlib import reload
@@ -16,7 +16,7 @@ def update_config_yml(new_config: dict):
         
         config_file.update(new_config)
 
-        with open("config/user_config.yml", "w") as f:
+        with open("src/config/user_config.yml", "w") as f:
             f.write(yaml.dump(config_file))
 
         # need to reload config module to update imported config.user_config values

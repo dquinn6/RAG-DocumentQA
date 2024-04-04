@@ -18,21 +18,22 @@ class VectorstoreHandler(ABC):
     Basic implementations will need ways to create/load a vectorstore and retrieve documents.
     """
     def __init__(self):
+        """Init the object."""
         pass
 
     @abstractmethod
     def create_local_vectorstore(self):
-        """ A method to generate a vectorstore index from a set of docs and write to local file. """
+        """Generates a vectorstore index from a set of docs and write to local file."""
         pass
 
     @abstractmethod
     def load_local_vectorstore(self):
-        """ A method to load the currently saved local vectorstore index. """
+        """Loads the currently saved local vectorstore index."""
         pass
 
     @abstractmethod
     def retrieve_top_documents(self):
-        """ A method to retrieve top document matches for RAG prompting. """
+        """Retrieves top document matches for RAG prompting."""
         pass
 
 

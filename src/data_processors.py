@@ -11,29 +11,40 @@ from abc import ABC, abstractmethod
 
 
 class DataProcessor(ABC):
-    def __init__(self):
+    """Base class for data processing into format needed for vectorstore creation."""
+    def __init__(self) -> None:
+        """Init the object."""
         pass
 
     @abstractmethod
-    def process_text(self):
-        """ A method to process raw data into a list of text for vectorstore creation. """
+    def process_text(self, *args, **kwargs) -> Optional[List[str]]:
+        """Processes raw data into a list of text for vectorstore creation."""
         pass
 
     @abstractmethod
-    def ret_passages_with_pattern(self):
-        """ A method to return list of passages containing a text pattern. """
+    def ret_passages_with_pattern(self) -> Optional[List[str]]:
+        """Returns list of passages containing a text pattern."""
         pass
 
 
 class WikiTextProcessor(DataProcessor):
+    """DataProcessor subclass for processing data into format needed for vectorstore creation."""
 
     def __init__(
             self, 
-            dataset_version = "wikitext-2-raw-v1", 
-            split="train", 
+            dataset_version: str = "wikitext-2-raw-v1", 
+            split: str="train", 
             communicator: Optional[Communicator] = None,
             verbose: bool=True,
-        ):
+        ) -> None:
+        """Init object to process WikiTest dataset.
+
+        Args:
+            dataset_version (str, optional): Dataset version matching names on HF. Defaults to "wikitext-2-raw-v1".
+            split (str, optional): Split of data to use. Defaults to "train".
+            communicator (Optional[Communicator], optional): Communicator object used for counting tokens for trimming data. Defaults to None.
+            verbose (bool, optional): Whether to diplay info messages while processing. Defaults to True.
+        """        
 
         self.dataset = load_dataset("wikitext", dataset_version)
         self.data = self.dataset[split]["text"]
@@ -42,20 +53,27 @@ class WikiTextProcessor(DataProcessor):
 
 
     def classify_string_type(self, text: str) -> Optional[str]:
-        # define a function to classify string as title/header/content based on the delimiters we saw above
+        """Classifies string as title/header/subheader/content based on the delimiters in the data.
 
+        Args:
+            text (str): WikiText raw string.
+
+        Returns:
+            Optional[str]: Title/header/subheader/content classification; None if fails
+        """        
         if text == '':
             return "empty"
         
+        # Define delimiters observed in data
         title_delimiter = " = "
         header_delimiter = " = = "
         subheader_delimiter = " = = = "
 
         def check_by_delimiter(t, delimiter: str) -> bool:
-            # when split by the right delimiter, text will be in the form: ['', text, '\n']
+            # When split by the right delimiter, text will be in the form: ['', text, '\n']
             t_split = t.split(delimiter)
 
-            # for titles and headers, we can expect split == 3 and split[-1] == \n
+            # For titles and headers, we can expect split == 3 and split[-1] == \n
             if len(t_split) == 3 and t_split[-1] == '\n':
                 return True
             else:
@@ -79,19 +97,27 @@ class WikiTextProcessor(DataProcessor):
             return None 
         
 
-    def transform_list_into_passages(self, text_list: str) -> Optional[List[str]]:
+    def transform_list_into_passages(self, text_list: List[str]) -> Optional[List[str]]:
+        """Transforms a list of newline strings into a list of full passage strings.
 
+        Args:
+            text_list (List[str]): List of newline strings from dataset.
+
+        Returns:
+            Optional[List[str]]: List of passages 
+        """        
         try:
+            # Store counts of titles, headers, etc. for double check
             text_type = list(map(lambda t: self.classify_string_type(t), text_list))
+            type_counts = Counter(text_type) 
 
-            type_counts = Counter(text_type) # dict storing counts of titles, headers, etc.
-
+            # Get indicies of strings in list classified as titles
             title_idx = np.array([i for i,v in enumerate(text_type) if v == "title"])
-            title_idx = np.append(title_idx, len(text_list)) # append for last passage
+            title_idx = np.append(title_idx, len(text_list)) # Append for last passage
             title_idx_pairs = np.column_stack((title_idx[:-1], title_idx[1:]))
 
+            # Slice between title indicies to form full passage
             passages = []
-
             for idx_pair in title_idx_pairs:
                 start_i, end_i = idx_pair[0], idx_pair[1]
                 passage = "\n".join(text_list[start_i:end_i])
@@ -117,22 +143,22 @@ class WikiTextProcessor(DataProcessor):
             if not os.path.exists(save_path):
                 os.mkdir(save_path)
 
+        # Create list of passages from raw data
         passages = self.transform_list_into_passages(self.data)
         
         if self.verbose:
             logging.info(f"{len(passages)} passages created. ")
 
         try:
+            # Filter out passages if token limit was set
             if token_limit:
-                # exit if communicator was never initialized
+                # Exit if communicator was never initialized
                 if self.communicator == None:
                     logging.error("Cannot limit tokens without providing a Communicator object. ")
                     return None
                 
-                passage_token_counts = list(map(lambda p: self.communicator.count_tokens(p), passages))
-                
-                valid_idx = [i for i,v in enumerate(passage_token_counts) if v <= token_limit]
-                passages = [v for i,v in enumerate(passages) if i in valid_idx]
+                # Filter passages
+                passages = [p for p in passages if self.communicator.count_tokens(p) <= token_limit]
 
                 if self.verbose:
                     logging.info(f"{len(passages)} passages remaining after limiting tokens")

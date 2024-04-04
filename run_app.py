@@ -1,10 +1,10 @@
 import os
 import logging
-from config import config
+from src.config import config
 import streamlit as st
 import json
 import pandas as pd
-from src.utils import update_patterns_json
+from src.utils import update_patterns_json, update_config_yml
 from src.factories import ModelFactory, DataProcessorFactory
 from src.app_helpers import btn_lock_callback, get_model_factory_name, create_logger, gather_docs, render_doc_viewer
 
@@ -16,7 +16,7 @@ DATASET_NAME = "WikiText"
 VECTORSTORE_NAME = "Langchain"
 MODEL_NAME = config.user_config["MODEL_NAME"] # name that matches openai names; needs to be mapped to defined factory names
 
-# Direct src code logging to backend.log through logging.config
+# Direct src code logging to backend.log
 logging.basicConfig(
     filename=LOG_PATH+"backend.log",
     filemode='a',
@@ -28,10 +28,10 @@ logging.basicConfig(
 @st.cache_data
 def init_files():
     # Clear logs
-    with open(LOG_PATH+"streamlit.log", "w") as _:
-        pass
-    with open(LOG_PATH+"backend.log", "w") as _:
-        pass
+    with open(LOG_PATH+"streamlit.log", "w") as f:
+        f.close()
+    with open(LOG_PATH+"backend.log", "w") as f:
+        f.close()
     # Clear patterns file
     update_patterns_json(clear_json=True)
 
@@ -41,13 +41,13 @@ def init_communicator_and_processor():
 
     # Since user will manipulate docs from UI, init with regular communicator first
 
-    model_factory = ModelFactory() # return so we can redefine RAG later
+    model_factory = ModelFactory() 
     communicator = model_factory.create_model(get_model_factory_name(MODEL_NAME, rag=False))
 
     data_factory = DataProcessorFactory()
     data_processor = data_factory.create_processor(DATASET_NAME, communicator)
 
-    return communicator, data_processor, model_factory
+    return communicator, data_processor
 
 
 def run_streamlit_app():
@@ -69,13 +69,13 @@ def run_streamlit_app():
         st.session_state["disable_flg"] = False
 
     if "logger" not in st.session_state:
-        st.session_state["logger"] = create_logger()
+        st.session_state["logger"] = create_logger() # Direct UI logging to streamlit.log
 
     logger = st.session_state["logger"]
 
     # Objects to be initialized only once on first loop
     init_files()
-    communicator, data_processor, model_factory = init_communicator_and_processor()
+    communicator, data_processor = init_communicator_and_processor()
 
     st.title("Manipulate WikiText2 QA")
     st.header("About")
@@ -178,7 +178,8 @@ def run_streamlit_app():
     if token_limit:
         token_limit = int(token_limit)
         if config.user_config["TOKEN_LIMIT"] != token_limit:
-            config.user_config["TOKEN_LIMIT"] = token_limit
+            #config.user_config["TOKEN_LIMIT"] = token_limit
+            update_config_yml({"TOKEN_LIMIT": token_limit})
             with token_count_placeholder.container(border=False):
                 st.write(f"Token limit: {token_limit}")
             # Update docs with new token limit
@@ -243,6 +244,8 @@ def run_streamlit_app():
             def progress(p, i):
                 with progress_holder.container():
                     st.progress(p, f'Progress: Documents Processed={i}')
+
+            model_factory = ModelFactory()
 
             communicator = model_factory.create_model(
                 model_name = get_model_factory_name(MODEL_NAME, rag=True), 

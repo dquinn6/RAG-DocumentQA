@@ -2,7 +2,7 @@
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Tuple, List
 
 import tiktoken
 from openai import OpenAI
@@ -32,31 +32,31 @@ def vs_required(function):
 
 
 class Communicator(ABC):
-    """Base class for Communicator subclasses"""
+    """Base class for Communicator subclasses."""
 
-    def __init__(self, vectorstore_handler: Optional[VectorstoreHandler] = None):
+    def __init__(self, vectorstore_handler: Optional[VectorstoreHandler] = None) -> None:
         """Init with optional Vectorstore Handler."""
         self.vs_hndlr = vectorstore_handler
 
     def set_vectorstore_handler(
         self, vectorstore_handler: Optional[VectorstoreHandler] = None
-    ):
-        """A method to set the vectorstore handler post-init."""
+    ) -> None:
+        """Sets the vectorstore handler post-init."""
         self.vs_hndlr = vectorstore_handler
 
     @abstractmethod
-    def post_prompt(self):
-        """A method to send/receive messages with LLM, whether through API post or local process."""
+    def post_prompt(self, *args, **kwargs) -> Optional[str]:
+        """Sends/receives messages with LLM, whether through API post or local process."""
         pass
 
     @abstractmethod
-    def count_tokens(self):
-        """A method to count tokens in text using respective LLM's tokenizer."""
+    def count_tokens(self, *args, **kwargs) -> Optional[int]:
+        """Counts tokens in text using respective LLM's tokenizer."""
         pass
 
     @abstractmethod
-    def post_rag_prompt(self):
-        """A method for posting with RAG; add vs_required decorator when implementing in subclass"""
+    def post_rag_prompt(self, *args, **kwargs) -> Tuple[Optional[str], Optional[List[str]]]:
+        """Sends RAG prompt and return response and retrieved context; add vs_required decorator when implementing in subclass."""
         pass
 
 
@@ -191,7 +191,7 @@ class GPTCommunicator(Communicator):
         return truncated_text
 
     @vs_required
-    def post_rag_prompt(self, query: str):
+    def post_rag_prompt(self, query: str) -> Tuple[Optional[str], Optional[List[str]]]:
         """Method to communicate with GPT using RAG-constructed prompts.
 
         Args:
@@ -200,28 +200,32 @@ class GPTCommunicator(Communicator):
         Returns:
             Optional[str]: GPT's text response; None if try fails.
         """
+        try:
+            if self.system_role != RAG_SYS_ROLE_MSG:
+                self.system_role = RAG_SYS_ROLE_MSG
 
-        if self.system_role != RAG_SYS_ROLE_MSG:
-            self.system_role = RAG_SYS_ROLE_MSG
+            # Retrieve top matched documents from vectorstore
+            top_context = self.vs_hndlr.retrieve_top_documents(query)
 
-        # Retrieve top matched documents from vectorstore
-        top_context = self.vs_hndlr.retrieve_top_documents(query)
+            # Combine list of context docuements into a single string and add preface messages
+            all_context = RAG_CONTEXT_PREFACE + "\n\n".join(top_context)
+            query = RAG_QUERY_PREFACE + query
 
-        # Combine list of context docuements into a single string and add preface messages
-        all_context = RAG_CONTEXT_PREFACE + "\n\n".join(top_context)
-        query = RAG_QUERY_PREFACE + query
+            # Cut context down if needed; account for size of query
+            buffer_token_space = self.count_tokens(query)
+            token_limit = self.max_prompt_tokens - buffer_token_space
 
-        # Cut context down if needed; account for size of query
-        buffer_token_space = self.count_tokens(query)
-        token_limit = self.max_prompt_tokens - buffer_token_space
+            if self.count_tokens(all_context) > token_limit:
+                prompt = self.truncate_text(all_context, token_limit) + query
+            else:
+                prompt = all_context + query
 
-        if self.count_tokens(all_context) > token_limit:
-            prompt = self.truncate_text(all_context, token_limit) + query
-        else:
-            prompt = all_context + query
+            response = self.post_prompt(
+                prompt
+            )  # can't use truncate arg here, since it would cut our query at the bottom
 
-        response = self.post_prompt(
-            prompt
-        )  # can't use truncate arg here, since it would cut our query at the bottom
+        except Exception as e:
+            logging.error(f"Failed to post RAG prompt: {e}")
+            return None, None
 
         return response, top_context

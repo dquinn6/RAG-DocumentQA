@@ -1,5 +1,4 @@
 import yaml
-import logging
 
 # Load the config file
 
@@ -13,5 +12,5 @@ def load_config_yml(filename):
     return config
 
 # store user config as var
-filepath = "config/user_config.yml"
+filepath = "src/config/user_config.yml"
 user_config = load_config_yml(filepath)

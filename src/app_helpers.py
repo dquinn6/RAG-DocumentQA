@@ -6,7 +6,7 @@ from logging.handlers import RotatingFileHandler
 from typing import Optional
 
 import streamlit as st
-from config import config
+from src.config import config
 
 from src import communicators, data_processors
 from src.utils import update_patterns_json
