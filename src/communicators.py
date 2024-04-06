@@ -1,8 +1,8 @@
-""" Classes for LLM API communication. """
+"""Module containing classes for LLM API communication."""
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Optional, Tuple, List
+from typing import Callable, List, Optional, Tuple
 
 import tiktoken
 from openai import OpenAI
@@ -19,8 +19,15 @@ RAG_CONTEXT_PREFACE = "Please use the following context to generate your respons
 RAG_QUERY_PREFACE = "\n\nBased solely on the context provided above, please answer the following user query:\n"
 
 
-# Decorator for methods requiring vectorstore to be set
-def vs_required(function):
+class CommunicatorError(Exception):
+    """Custom error for Communicator objects."""
+
+    pass
+
+
+def vs_required(function: Callable) -> Callable:
+    """Require a method to have vectorstore set before proceeding."""
+
     def wrapper(self, *args, **kwargs):
         if self.vs_hndlr is None:
             raise ValueError(
@@ -34,29 +41,33 @@ def vs_required(function):
 class Communicator(ABC):
     """Base class for Communicator subclasses."""
 
-    def __init__(self, vectorstore_handler: Optional[VectorstoreHandler] = None) -> None:
+    def __init__(
+        self, vectorstore_handler: Optional[VectorstoreHandler] = None
+    ) -> None:
         """Init with optional Vectorstore Handler."""
         self.vs_hndlr = vectorstore_handler
 
     def set_vectorstore_handler(
         self, vectorstore_handler: Optional[VectorstoreHandler] = None
     ) -> None:
-        """Sets the vectorstore handler post-init."""
+        """Set the vectorstore handler post-init."""
         self.vs_hndlr = vectorstore_handler
 
     @abstractmethod
     def post_prompt(self, *args, **kwargs) -> Optional[str]:
-        """Sends/receives messages with LLM, whether through API post or local process."""
+        """Send/receive messages with LLM, whether through API post or local process."""
         pass
 
     @abstractmethod
     def count_tokens(self, *args, **kwargs) -> Optional[int]:
-        """Counts tokens in text using respective LLM's tokenizer."""
+        """Count tokens in text using respective LLM's tokenizer."""
         pass
 
     @abstractmethod
-    def post_rag_prompt(self, *args, **kwargs) -> Tuple[Optional[str], Optional[List[str]]]:
-        """Sends RAG prompt and return response and retrieved context; add vs_required decorator when implementing in subclass."""
+    def post_rag_prompt(
+        self, *args, **kwargs
+    ) -> Tuple[Optional[str], Optional[List[str]]]:
+        """Send RAG prompt and return response and retrieved context; add vs_required decorator when implementing in subclass."""
         pass
 
 
@@ -69,7 +80,7 @@ class GPTCommunicator(Communicator):
         model_name: str = "gpt-3.5-turbo",
         vectorstore_handler: Optional[VectorstoreHandler] = None,
     ) -> None:
-        """Init object
+        """Init communicator object.
 
         Args:
             api_key (str): OpenAI API access token
@@ -107,15 +118,18 @@ class GPTCommunicator(Communicator):
             0  # keep as 0 to minimize responses straying from provided documents
         )
 
-    def post_prompt(self, text: str, truncate: bool = True) -> Optional[str]:
-        """Method to communicate with GPT.
+    def post_prompt(self, text: str, truncate: bool = True) -> str:
+        """Send message to GPT and receivea response.
 
         Args:
             text (str): Input text prompt to send to GPT.
             truncate (bool): If true, will truncate the text to model's token limit before sending.
 
+        Raises:
+            CommunicatorError: Raised when post to model is unsuccessful.
+
         Returns:
-            Optional[str]: GPT's text response; None if fails.
+            str: GPT's text response; None if fails.
         """
         try:
             if truncate:
@@ -133,32 +147,35 @@ class GPTCommunicator(Communicator):
             self.total_tokens_used += int(response.usage.total_tokens)
 
         except Exception as e:
-            logging.error(f"Failed to post prompt: {e}")
-            return None
+            raise CommunicatorError(f"Failed to post prompt: {e}")
 
         return response.choices[0].message.content
 
-    def count_tokens(self, text: str) -> Optional[int]:
-        """Method to count number of tokens in a given piece of text.
+    def count_tokens(self, text: str) -> int:
+        """Count number of tokens in a given piece of text.
 
         Args:
             text (str): Input text to count tokens from.
 
+        Raises:
+            CommunicatorError: Raised when token count is unsuccessful.
+
         Returns:
-            Optional[int]: Token count; None if fails.
+            int: Token count; None if fails.
         """
         try:
             encoding = tiktoken.encoding_for_model(self.model_name)
             num_tokens = len(encoding.encode(text))
         except Exception as e:
-            logging.error(f"Failed to count tokens: {e}")
-            return None
+            raise CommunicatorError(f"Failed to count tokens: {e}")
 
         return num_tokens
 
     def truncate_text(self, text: str, token_limit: int) -> Optional[str]:
-        """Method to truncate a string to a specified token limit.
+        """Truncate a string to a specified token limit.
+
         Parses by sentence period to not truncate in the middle of a sentence.
+        Not necessarily a vital method for the program; will return None instead of raising error in Exception.
 
         Args:
             text (str): Input text to truncate.
@@ -191,14 +208,17 @@ class GPTCommunicator(Communicator):
         return truncated_text
 
     @vs_required
-    def post_rag_prompt(self, query: str) -> Tuple[Optional[str], Optional[List[str]]]:
-        """Method to communicate with GPT using RAG-constructed prompts.
+    def post_rag_prompt(self, query: str) -> Tuple[str, List[str]]:
+        """Send a RAG-constructed prompt to GPT and receive response.
 
         Args:
             query (str): Input question ask GPT.
 
+        Raises:
+            CommunicatorError: Raised when RAG post is unsuccessful.
+
         Returns:
-            Optional[str]: GPT's text response; None if try fails.
+            Tuple[str, List[str]]: (response from model, retrieved RAG context given to model)
         """
         try:
             if self.system_role != RAG_SYS_ROLE_MSG:
@@ -225,7 +245,6 @@ class GPTCommunicator(Communicator):
             )  # can't use truncate arg here, since it would cut our query at the bottom
 
         except Exception as e:
-            logging.error(f"Failed to post RAG prompt: {e}")
-            return None, None
+            raise CommunicatorError(f"Failed to post RAG prompt: {e}")
 
         return response, top_context

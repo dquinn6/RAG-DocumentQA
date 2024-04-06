@@ -1,4 +1,4 @@
-""" Module for UI application helper functions.  """
+"""Module for UI application helper functions."""
 
 import logging
 import os
@@ -6,9 +6,9 @@ from logging.handlers import RotatingFileHandler
 from typing import Optional
 
 import streamlit as st
-from src.config import config
 
 from src import communicators, data_processors
+from src.config import config
 from src.utils import update_patterns_json
 
 # Define LOG_PATH in program config.yml
@@ -67,7 +67,7 @@ def render_doc_viewer(
     include_text: Optional[str] = None,
     unique_key: str = "key",
 ) -> None:
-    """Helper UI function to render a document viewing window.
+    """Render a document viewing window in UI.
 
     Args:
         docs_name (str, optional): st.session_state name holding list of docuements. Defaults to "documents".
@@ -133,7 +133,7 @@ def gather_docs(
     replace_pattern: Optional[str] = None,
     verbose: bool = True,
 ) -> None:
-    """Helper UI function to find documents with specified search pattern and maintain in session states.
+    """Fetch documents with specified search pattern and maintain in session states.
 
     Args:
         data_processor (data_processors.DataProcessor): DataProcessor object with data.
@@ -147,7 +147,7 @@ def gather_docs(
             if verbose:
                 st.sidebar.write("Please input search and replace patterns")
         else:
-            update_patterns_json(key=search_pattern, val=replace_pattern)
+            update_patterns_json(search_key=search_pattern, replace_val=replace_pattern)
             docs_with_pattern = data_processor.ret_passages_with_pattern(search_pattern)
             if verbose:
                 st.sidebar.write(
@@ -172,7 +172,7 @@ def gather_docs(
 def get_model_factory_name(
     model_name: str = "gpt-3.5-turbo", rag: bool = False
 ) -> Optional[str]:
-    """Helper function mapping vendor API model names to program defined names, to differentiate between RAG and standard versions. 
+    """Map vendor API model names to program defined names, to differentiate between RAG and standard versions.
 
     Args:
         model_name (str, optional): Model name used in vendor API. Defaults to "gpt-3.5-turbo".
@@ -194,8 +194,8 @@ def get_model_factory_name(
             "gpt-4": "GPT_4_RAG",
         }
         return names_mapped[model_name]
-    
+
 
 def btn_lock_callback():
-    """Callback function to lock UI widgets upon a triggered event."""
+    """Locks UI widgets upon a triggered event."""
     st.session_state.disable_flg = not st.session_state.disable_flg
