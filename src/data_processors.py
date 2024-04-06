@@ -137,8 +137,7 @@ class WikiTextProcessor(DataProcessor):
             save_path: Optional[str] = None,
             save_filename: str = "processed_data",
             manipulate_pattern: Optional[List[Tuple[str, str]]] = None,
-        ):
-
+        ):   
         if save_path is not None:
             if not os.path.exists(save_path):
                 os.mkdir(save_path)

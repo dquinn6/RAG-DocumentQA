@@ -172,7 +172,7 @@ def gather_docs(
 def get_model_factory_name(
     model_name: str = "gpt-3.5-turbo", rag: bool = False
 ) -> Optional[str]:
-    """Helper function mapping vendor API model names to program defined names.
+    """Helper function mapping vendor API model names to program defined names, to differentiate between RAG and standard versions. 
 
     Args:
         model_name (str, optional): Model name used in vendor API. Defaults to "gpt-3.5-turbo".
@@ -184,19 +184,17 @@ def get_model_factory_name(
     if not rag:
         names_mapped = {
             "gpt-3.5-turbo": "GPT_3.5_TURBO",
-            "gpt-4": None,
-            "gpt-4-32k": None,
+            "gpt-4": "GPT_4",
         }
         return names_mapped[model_name]
 
     else:
         names_mapped = {
             "gpt-3.5-turbo": "GPT_3.5_TURBO_RAG",
-            "gpt-4": None,
-            "gpt-4-32k": None,
+            "gpt-4": "GPT_4_RAG",
         }
         return names_mapped[model_name]
-
+    
 
 def btn_lock_callback():
     """Callback function to lock UI widgets upon a triggered event."""

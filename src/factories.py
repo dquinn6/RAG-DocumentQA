@@ -78,14 +78,13 @@ class VectorstoreFactory:
         
 class ModelFactory:
 
-    implemented_classes = ["GPT_3.5_TURBO", "GPT_3.5_TURBO_RAG"]
+    implemented_classes = ["GPT_3.5_TURBO", "GPT_3.5_TURBO_RAG", "GPT_4", "GPT_4_RAG"]
 
     def create_model(self, model_name, dataset_name="WikiText", vectorstore_name="Langchain", new_vectorstore=False, _callback=None):
 
         def transform_to_rag_model(communicator, dataset_name, vectorstore_name, new_vectorstore):
 
             # Create Dataset processor and process dataset with config.yml params
-
             if new_vectorstore: # only need to reprocess data for new vectorstore creation
                 data_factory = DataProcessorFactory()
                 _ = data_factory.create_processor(dataset_name, communicator, process_data=True)
@@ -94,19 +93,25 @@ class ModelFactory:
             vs_factory = VectorstoreFactory()
             vs_factory.attach_vectorstore(vectorstore_name, communicator, load_vectorstore=not new_vectorstore, _callback=_callback)
 
-
-        if model_name == "GPT_3.5_TURBO":
-            communicator = GPTCommunicator(api_key=API_KEY, model_name="gpt-3.5-turbo")
-            test_communication(communicator)
-
-
-        elif model_name == "GPT_3.5_TURBO_RAG":
-
-            communicator = GPTCommunicator(api_key=API_KEY, model_name="gpt-3.5-turbo")
-            transform_to_rag_model(communicator, dataset_name, vectorstore_name, new_vectorstore)
-            test_communication(communicator)
-
-        else:
+        if model_name not in self.implemented_classes:
             raise NotImplementedError(f"'{model_name}' Model not implemented; valid names include: {self.implemented_classes}")
+
+        factory_name_to_api_name = {
+              "GPT_3.5_TURBO": "gpt-3.5-turbo", 
+              "GPT_3.5_TURBO_RAG": "gpt-3.5-turbo",
+              "GPT_4": "gpt-4", 
+              "GPT_4_RAG": "gpt-4", 
+        }
+
+        # Init communicator with API model name
+        api_model_name = factory_name_to_api_name[model_name]
+        communicator = GPTCommunicator(api_key=API_KEY, model_name=api_model_name)
+
+        # If RAG version chosen, transform the model
+        if model_name.split("_")[-1] == "RAG":
+            transform_to_rag_model(communicator, dataset_name, vectorstore_name, new_vectorstore)
+
+        # Test communication for potential issues (e.g. bad API key, server down, etc.)
+        test_communication(communicator)
             
         return communicator

@@ -77,16 +77,21 @@ def run_streamlit_app():
     init_files()
     communicator, data_processor = init_communicator_and_processor()
 
+    # About and usage section; to disappear after start button
+
     st.title("Manipulate WikiText2 QA")
-    st.header("About")
-    st.write("This application is a RAG-based system using GPT to answer questions on the WikiText2 dataset, \
+    hide_preface = st.checkbox("Hide Preface", key="hide_preface")
+
+    about_text = "This application is a RAG-based system using GPT to answer questions on the WikiText2 dataset, \
     which is used as a set of dummy documents for this demo. Since GPT has already been trained on content \
     in these documents and can answer related questions without RAG, the functionality to manipulate them has \
-    been incorporated to better demonstrate GPT's usage of the given information rather than it's internal knowledge."
-    )
+    been incorporated to better demonstrate GPT's usage of the given information rather than its internal knowledge."
 
-    st.header("Usage")
-    st.write("The Initialization section below lists the current configuration for this session. Use the input sections\
+    if not hide_preface:
+        st.header("About")
+        st.write(about_text)
+
+    usage_text = "The Initialization section below lists the current configuration for this session. Use the input sections\
     in the left sidebar to adjust these params before creating the system. Here you will also be able to manipulate the documents \
     GPT will be using to answer questions. When you provide search and replace text and add the pattern, a viewer will appear to show\
     all documents that have this search string. You can use this viewer to read the docs and create questions GPT should be able to answer.\
@@ -97,7 +102,10 @@ def run_streamlit_app():
     Alternatively, you can click the 'Load vectorstore' button to utilize the vectorstore from the previous section and avoid rebuilding.\
     \n\
     \nAfter the vectorstore is set, you'll be able to interact with GPT by sending queries and viewing responses based off of the manipulated documents!"
-    )
+    
+    if not hide_preface:
+        st.header("Usage")
+        st.write(usage_text)
 
     # Initialization sections of UI
 
@@ -131,8 +139,7 @@ def run_streamlit_app():
         'Select a model:',
         (
             "gpt-3.5-turbo", 
-            "gpt-4", 
-            "gpt-4-32k"
+            "gpt-4",
         ),
         disabled=st.session_state.disable_flg
     )
@@ -287,7 +294,7 @@ def run_streamlit_app():
 
         st.subheader("Retrieved Context", divider=section2_color)
 
-        if st.checkbox("Show"):
+        if st.checkbox("show", key="show_retrieved"):
             render_doc_viewer(
                 docs_name="retrieved_docs", 
                 index_name="context_index",
