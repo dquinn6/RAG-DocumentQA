@@ -1,3 +1,5 @@
+pandas>=2.2.1
+tqdm>=4.66.2
 langchain==0.1.12
 langchain_community==0.0.28
 langchain_core==0.1.33
@@ -8,3 +10,7 @@ streamlit==1.30.0
 datasets==2.18.0
 pyyaml==6.0.1
 tiktoken==0.6.0
+black>=24.3.0
+isort>=5.13.2
+pytest>=8.1.1
+ruff>=0.3.4
