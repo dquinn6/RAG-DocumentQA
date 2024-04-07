@@ -15,9 +15,9 @@ from src.utils import update_config_yml, update_patterns_json
 LOG_PATH = config.user_config["LOG_PATH"]
 PATTERNS_FILENAME = config.user_config["PATTERNS_FILENAME"]
 
-# Define dataset and vectorstore to use in this app
-DATASET_NAME = "WikiText"
-VECTORSTORE_NAME = "LangchainFAISS"
+# Define dataset, vectorstore, and model in config.yml to use in this app
+DATASET_NAME = config.user_config["DATASET_NAME"] # WikiText
+VECTORSTORE_NAME = config.user_config["VECTORSTORE_NAME"]
 MODEL_NAME = config.user_config[
     "MODEL_NAME"
 ]  # name that matches openai names; needs to be mapped to defined factory names
@@ -285,14 +285,21 @@ def run_streamlit_app():
     load_vs, create_vs = st.columns(2)
 
     if load_vs.button("Load vectorstore", key="load"):
-        model_factory = ModelFactory()
-        communicator = model_factory.create_model(
-            model_name=get_model_factory_name(MODEL_NAME, rag=True),
-            dataset_name=DATASET_NAME,
-            vectorstore_name=VECTORSTORE_NAME,
-            new_vectorstore=False,
-        )
-        st.session_state["communicator"] = communicator
+        try:
+            model_factory = ModelFactory()
+            communicator = model_factory.create_model(
+                model_name=get_model_factory_name(MODEL_NAME, rag=True),
+                dataset_name=DATASET_NAME,
+                vectorstore_name=VECTORSTORE_NAME,
+                new_vectorstore=False,
+            )
+            st.session_state["communicator"] = communicator
+
+        except Exception as e:
+            st.write(f"Failed to load current vectorstore; please create a new one to proceed.")
+            error_placeholder = st.empty()
+            with error_placeholder.container(border=True):
+                st.write(e)
 
     if create_vs.button(
         "Create new vectorstore", on_click=btn_lock_callback, key="create"
