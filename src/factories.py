@@ -5,7 +5,7 @@ from typing import Callable, Optional
 
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
-from src.communicators import Communicator, GPTCommunicator
+from src.communicators import Communicator, GPTCommunicator, RAG_SYS_ROLE_MSG
 from src.config import config
 from src.data_processors import DataProcessor, WikiTextProcessor
 from src.utils import test_communication
@@ -195,6 +195,7 @@ class ModelFactory:
             transform_to_rag_model(
                 communicator, dataset_name, vectorstore_name, new_vectorstore
             )
+            communicator.system_role = RAG_SYS_ROLE_MSG
 
         # Test communication for potential issues (e.g. bad API key, server down, etc.)
         test_communication(communicator)

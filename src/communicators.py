@@ -30,7 +30,7 @@ def vs_required(function: Callable) -> Callable:
 
     def wrapper(self, *args, **kwargs):
         if self.vs_hndlr is None:
-            raise ValueError(
+            raise CommunicatorError(
                 "vs_hndlr not set; pass VectostoreHandler upon init or invoke set_vectorstore_handler() before using this method."
             )
         return function(self, *args, **kwargs)

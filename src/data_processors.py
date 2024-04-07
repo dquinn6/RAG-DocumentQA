@@ -106,8 +106,6 @@ class WikiTextProcessor(DataProcessor):
 
         except Exception as e:
             raise DataProcessorError(f"Failed to classify string: {e}")
-            # logging.error(f"Failed to classify string: {e}")
-            # return None
 
     def transform_list_into_passages(self, text_list: List[str]) -> List[str]:
         """Transform a list of newline strings into a list of full passage strings.
@@ -144,8 +142,6 @@ class WikiTextProcessor(DataProcessor):
 
         except Exception as e:
             raise DataProcessorError(f"Failed to transform list into passages: {e}")
-            # logging.error(f"Failed to transform list into passages: {e}")
-            # return None
 
         return passages
 
@@ -231,8 +227,6 @@ class WikiTextProcessor(DataProcessor):
 
         except Exception as e:
             raise DataProcessorError(f"Failed to process data:  {e}")
-            # logging.error(f"Failed to process data: {e}")
-            # return None
 
         return passages
 
