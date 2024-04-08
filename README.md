@@ -15,20 +15,21 @@ The loaded page has a 'usage' section that describes how to use the interface; y
 
 The default configuration will run the program in your local browser, but streamlit can be configured to be deployed on a remote server for user servicing if desired. 
 
-### Stopping the program
-
-To stop the program, send the terminate process signal (CTRL+C) in your terminal. You can also suspend the program (CTRL+Z) and terminate the program with the command 'killall -9 python'.
-
 ### UI Demo
 
 ![](readme_images/Demo.gif)
 
+### Stopping the program
+
+To stop the program, send the terminate process signal (CTRL+C) in your terminal. You can also suspend the program (CTRL+Z) and terminate the program with the command 'killall -9 python'.
 
 ## Running the CLI-based application
 
 If you don't wish to use the UI-based app, you can interface with the base RAG system using the command line interface via run_cli.py. This program will create the model using the config params and manipulation patterns in src/config/user_config.yml and src/config/manipulate_patterns.json. After setting your desired params for the run, use the following command to start the program:
 
     python run_cli.py
+
+
 
 ### CLI Demo
 
