@@ -110,21 +110,21 @@ def run_streamlit_app():
     about_text = "This application is a RAG-based system using GPT to answer questions on the WikiText2 dataset, \
     which is used as a set of dummy documents for this demo. Since GPT has already been trained on content \
     in these documents and can answer related questions without RAG, the functionality to manipulate them has \
-    been incorporated to better demonstrate GPT's usage of the given information rather than its internal knowledge."
+    been incorporated to better demonstrate GPT's usage of the given information over its internal knowledge."
 
     if not hide_preface:
         st.header("About")
         st.write(about_text)
 
     usage_text = "The Initialization section below lists the current configuration for this session. Use the input sections\
-    in the left sidebar to adjust these params before creating the system. Here you will also be able to manipulate the documents \
-    GPT will be using to answer questions. When you provide search and replace text and add the pattern, a viewer will appear to show\
+    in the left sidebar to adjust these parameters before creating the system. Here you will also be able to manipulate the documents \
+    that GPT will be using to answer questions. When you provide search and replace text and add the pattern, a viewer will appear to show\
     all documents that have this search string. You can use this viewer to read the docs and create questions GPT should be able to answer.\
     You can add as many search and replace patterns as you like; the Document Manipulation section will keep track of every added pattern.\
     \n\
     \nOnce the configuration is done and document manipulation has been set, move down to the Chatbot QA section and click the 'Create vectorstore' button to build a vectorstore database\
     with the manipulated documents. While this is processing, you won't be able to interact with other parts of the UI until the vectostore is created.\
-    Alternatively, you can click the 'Load vectorstore' button to utilize the vectorstore from the previous section and avoid rebuilding.\
+    Alternatively, you can click the 'Load vectorstore' button to utilize the vectorstore from the previous session and avoid rebuilding.\
     \n\
     \nAfter the vectorstore is set, you'll be able to interact with GPT by sending queries and viewing responses based off of the manipulated documents!"
 
