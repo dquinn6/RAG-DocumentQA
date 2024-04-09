@@ -1,5 +1,6 @@
 """Module containing utility functions used throughout the codebase."""
 
+import os
 import json
 import logging
 from importlib import reload
@@ -13,6 +14,24 @@ from src.config import config
 LOG_PATH = config.user_config["LOG_PATH"]
 PATTERNS_FILENAME = config.user_config["PATTERNS_FILENAME"]
 
+def create_empty_file(filepath: str):
+    """Create an empty placeholder file; creates file directory if it doesn't exist.
+
+    Args:
+        filepath (str): File path + name to create
+    """    
+    try:
+        # Create dir if it doesn't exist
+        basedir = os.path.dirname(filepath)
+        if not os.path.exists(basedir):
+            os.makedirs(basedir)
+
+        # Create empty file
+        with open(filepath, "w+") as f:
+            pass
+        
+    except Exception as e:
+        logging.error(f"Failed to create empty file: {e}")
 
 def update_config_yml(new_config: dict) -> None:
     """Update program config.yml with new values.
@@ -121,3 +140,4 @@ def manipulate_passages(
         return None
 
     return manipulated_passages
+        
