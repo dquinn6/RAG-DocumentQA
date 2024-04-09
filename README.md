@@ -29,21 +29,21 @@
 <br/>
 
 ## About
-This application is a Retrieval Augmented Generation (RAG) based system using a Large Language Model (LLM) to answer questions on a supported set of documents. This demo application currently uses [OpenAI's GPT](https://platform.openai.com/docs/models) as the underlying LLM and the [WikiText2](https://huggingface.co/datasets/wikitext) dataset as a set of dummy documents to answer questions on, but the modular structure of this codebase allows a developer to easily implement other types of models or datasets.
+This application is a Retrieval Augmented Generation (RAG) based system using a Large Language Model (LLM) to answer questions on a supported set of documents. This demo application currently uses [OpenAI's GPT](https://platform.openai.com/docs/models) as the underlying LLM and the [WikiText2](https://huggingface.co/datasets/wikitext) dataset as a set of dummy documents to answer questions on, but the modular structure of this codebase allows the easy implementation other types of models or datasets.
 
-For a real use case, we would normally supply a set of private documents to the LLM that it wasn't trained on, creating a much more practical question answering application. WikiText2 is used in this application as it is open-source and provides a diverse set of documents to query on. However, GPT has already been trained on much of the content in these documents and can answer related questions without using a RAG approach. To better demonstrate this system, the functionality to manipulate these documents has been incorporated to better demonstrate GPT's usage of the given information rather than its internal knowledge.
+For a real use case, we would normally supply a set of private documents to the LLM that it wasn't trained on to create a practical application for users. WikiText2 is used in this application as it is open-source and provides a diverse set of documents to query on, making it a good choice for a demo application. However, GPT has already been trained on much of the content in these documents and can answer related questions without using a RAG approach. Therefore, the functionality to manipulate these documents has been incorporated to better demonstrate GPT's usage of the given information over its internal knowledge.
 
 ### Codebase Contents:
  
 
 #### Notebooks:
   - **dev_RAG.ipynb**: A notebook that walks through the development process for this application, including EDA, data preprocessing, and an initial POC development of the base RAG system.
-  - **demo_pipeline.ipynb**: A notebook demonstrating how to easily create and utilize a full RAG pipeline using the developed modules in this project.
+  - **demo_pipeline.ipynb**: A notebook demonstrating how to easily create and utilize the full RAG pipeline using the developed modules in this project.
 
 #### Source Code:
- - **Project modules** for the application
- - **Config yaml files** for specifying run parameters
- - **Pytests** for the project modules
+ - **Project modules** for the application.
+ - **Config yaml files** for specifying run parameters.
+ - **Pytests** for the project modules.
 
 #### Scripts:
  - **run_init.py**: A script to initialize required project directories and files.
@@ -63,25 +63,28 @@ Installing Anaconda is the easiest way to get Python, environments, and package 
 
 #### 2. Create a new Python environment
 
+In your terminal, run the following commands to create and activate a new Python environment for this project:
+
     conda create -n YOUR_ENV_NAME python=3.11
     conda activate YOUR_ENV_NAME
 
 #### 3. Install this project as a package
 
+Navigate to the root project directory (the location of this README) and install this project as a package with the following commands:
+
     cd PROJECT_DIR
     pip install .
 
-#### 4. Initialize the codebase with required files.
+Alternatively, if you don't wish to install this project as a package (e.g. you wish to further develop the codebase), you can just install the dependencies instead:
 
-Run the following command to create placeholder files required for the application.
+    pip install -r requirements.txt
 
-    python run_init.py
 
-#### 5. Set your model API key
+#### 4. Set your model API key
 
-Navigate to src/config/user_config.yml and add your OpenAI API key under ACCESS_TOKEN.
+Navigate to *src/config/user_config.yml* and add your OpenAI API key next to ACCESS_TOKEN.
 
-#### 6. (Optional) Change other config parameters.
+#### 5. (Optional) Change other config parameters.
 
 Change other parameters in user_config.yml if desired. However, many of these can be adjusted from the UI after starting the program. See [Config](#config) for more details on each of these parameters.
 
@@ -90,7 +93,7 @@ Change other parameters in user_config.yml if desired. However, many of these ca
 
 ## Running the UI-based Application
 
-The program has a UI implemented with Streamlit for easily manipulating the documents, creating the vectorstore, and interacting with the RAG-enabled model. To start the app, navigate to the root project directory and run the following command:
+The program has a UI implemented with Streamlit for easily manipulating the documents, creating the vectorstore, and interacting with the RAG-enabled model. To start the app, navigate to the root project directory (here) and run the following command:
 
     streamlit run run_app.py
 
@@ -104,7 +107,7 @@ The default configuration will run the program in your local browser, but stream
 
 ### Stopping the program
 
-To stop the program, send the terminate process signal (CTRL+C) in your terminal. You can also suspend the program (CTRL+Z) and terminate the program with the command 'killall -9 python'.
+To stop the program, send the terminate process signal (CTRL+C) in your terminal. You can also suspend the program (CTRL+Z) and terminate the program with the command *'killall -9 python'* (Note: this command will also terminate any other Python process running; you can find the PID of this application and specify this to kill instead).
 
 <br/>
 
@@ -121,6 +124,8 @@ If you don't wish to use the UI-based app, you can interface with the base RAG s
 <br/>
 
 ## Config
+
+This section describes each of the config parameter fields in src/config/user_config.yml.
 
 **ACCESS_TOKEN**: OpenAI API key for model access; may be expanded for other types of models in the future.
 
