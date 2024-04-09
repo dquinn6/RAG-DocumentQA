@@ -1,5 +1,6 @@
 """Module for UI application helper functions."""
 
+import json
 import logging
 import os
 from logging.handlers import RotatingFileHandler
@@ -9,10 +10,30 @@ import streamlit as st
 
 from src import communicators, data_processors
 from src.config import config
-from src.utils import update_patterns_json
+from src.utils import create_empty_file, update_patterns_json
 
-# Define LOG_PATH in program config.yml
+# Define paths used in program from config.yml
 LOG_PATH = config.user_config["LOG_PATH"]
+SAVE_PATH = config.user_config["SAVE_PATH"]
+PATTERNS_FILENAME = config.user_config["PATTERNS_FILENAME"]
+
+
+def create_placeholder_files():
+    """Create initial placeholder files and directories used in other scripts."""
+    # Init vectorstore dir, log and pattern files with empty placeholders
+    for filepath in [
+        SAVE_PATH + "__init__.py",
+        LOG_PATH + "backend.log",
+        LOG_PATH + "streamlit.log",
+        PATTERNS_FILENAME,
+    ]:
+        if not os.path.exists(filepath):
+            create_empty_file(filepath)
+
+    # Init patterns json with empty dict
+    if not os.path.exists(PATTERNS_FILENAME):
+        with open(PATTERNS_FILENAME, "w") as w:
+            json.dump({}, w)
 
 
 # Direct UI logging to streamlit.log through logger object
@@ -45,7 +66,12 @@ def create_logger(
     logger.setLevel(level)
     # If no handler present, add one
     if (
-        sum([isinstance(handler, RotatingFileHandler) for handler in logger.handlers])
+        sum(
+            [
+                isinstance(handler, RotatingFileHandler)
+                for handler in logger.handlers
+            ]
+        )
         == 0
     ):
         handler = RotatingFileHandler(
@@ -54,7 +80,9 @@ def create_logger(
             backupCount=backup_count,
         )
         handler.setFormatter(
-            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            logging.Formatter(
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            )
         )
         logger.addHandler(handler)
 
@@ -100,7 +128,10 @@ def render_doc_viewer(
         # Update index on button click
         if show_next:
             # Loop back to beginning if at end of list
-            if st.session_state[index_name] >= len(st.session_state[docs_name]) - 1:
+            if (
+                st.session_state[index_name]
+                >= len(st.session_state[docs_name]) - 1
+            ):
                 st.session_state[index_name] = 0
             else:
                 st.session_state[index_name] += 1
@@ -120,7 +151,9 @@ def render_doc_viewer(
                     "No documents with this criteria could be found; try a larger token limit or different search pattern."
                 )
             else:
-                st.write(st.session_state[docs_name][st.session_state[index_name]])
+                st.write(
+                    st.session_state[docs_name][st.session_state[index_name]]
+                )
 
     except Exception as e:
         logging.error(f"Failed to render document viewer: {e}")
@@ -147,8 +180,12 @@ def gather_docs(
             if verbose:
                 st.sidebar.write("Please input search and replace patterns")
         else:
-            update_patterns_json(search_key=search_pattern, replace_val=replace_pattern)
-            docs_with_pattern = data_processor.ret_passages_with_pattern(search_pattern)
+            update_patterns_json(
+                search_key=search_pattern, replace_val=replace_pattern
+            )
+            docs_with_pattern = data_processor.ret_passages_with_pattern(
+                search_pattern
+            )
             if verbose:
                 st.sidebar.write(
                     f"{len(docs_with_pattern)} / {len(data_processor.data)} documents with this search pattern."
@@ -156,7 +193,8 @@ def gather_docs(
             docs_valid = [
                 p
                 for p in docs_with_pattern
-                if communicator.count_tokens(p) < config.user_config["TOKEN_LIMIT"]
+                if communicator.count_tokens(p)
+                < config.user_config["TOKEN_LIMIT"]
             ]
             if verbose:
                 st.sidebar.write(
