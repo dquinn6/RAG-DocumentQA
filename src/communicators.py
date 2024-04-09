@@ -114,9 +114,7 @@ class GPTCommunicator(Communicator):
         )  # buffer for response tokens
         self.system_role = "You are a helpful AI assistant."  # default role
         self.total_tokens_used = 0
-        self.temperature = (
-            0  # keep as 0 to minimize responses straying from provided documents
-        )
+        self.temperature = 0  # keep as 0 to minimize responses straying from provided documents
 
     def post_prompt(self, text: str, truncate: bool = True) -> str:
         """Send message to GPT and receivea response.
@@ -133,7 +131,9 @@ class GPTCommunicator(Communicator):
         """
         try:
             if truncate:
-                text = self.truncate_text(text, token_limit=self.max_prompt_tokens)
+                text = self.truncate_text(
+                    text, token_limit=self.max_prompt_tokens
+                )
 
             response = self.client.chat.completions.create(
                 model=self.model_name,

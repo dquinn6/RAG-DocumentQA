@@ -5,7 +5,7 @@ from typing import Callable, Optional
 
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
-from src.communicators import Communicator, GPTCommunicator, RAG_SYS_ROLE_MSG
+from src.communicators import RAG_SYS_ROLE_MSG, Communicator, GPTCommunicator
 from src.config import config
 from src.data_processors import DataProcessor, WikiTextProcessor
 from src.utils import test_communication
@@ -125,7 +125,12 @@ class VectorstoreFactory:
 class ModelFactory:
     """Constructor for model communicator objects."""
 
-    implemented_classes = ["GPT_3.5_TURBO", "GPT_3.5_TURBO_RAG", "GPT_4", "GPT_4_RAG"]
+    implemented_classes = [
+        "GPT_3.5_TURBO",
+        "GPT_3.5_TURBO_RAG",
+        "GPT_4",
+        "GPT_4_RAG",
+    ]
 
     def create_model(
         self,
@@ -188,7 +193,9 @@ class ModelFactory:
 
         # Init communicator with API model name
         api_model_name = factory_name_to_api_name[model_name]
-        communicator = GPTCommunicator(api_key=API_KEY, model_name=api_model_name)
+        communicator = GPTCommunicator(
+            api_key=API_KEY, model_name=api_model_name
+        )
 
         # If RAG version chosen, transform the model
         if model_name.split("_")[-1] == "RAG":

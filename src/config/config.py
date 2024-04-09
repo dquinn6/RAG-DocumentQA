@@ -1,7 +1,8 @@
 """Module to load values from config.yml and init in module variable for codebase reference."""
 
-import yaml
 import os
+
+import yaml
 
 DEFAULT_CONFIG = {
     "ACCESS_TOKEN": None,

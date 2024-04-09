@@ -64,7 +64,9 @@ class LangchainVectorstoreFAISS(VectorstoreHandler):
         self.data = self.load_csv_file(processed_csv_path)
         self.embedding_type = embedding_type
         self.verbose = verbose
-        self.vectorstore = None  # invoke create/load_local_vectorstore() to set
+        self.vectorstore = (
+            None  # invoke create/load_local_vectorstore() to set
+        )
         self.retriever = None  # invoke create_retriever to set
 
         if self.verbose:
@@ -88,7 +90,9 @@ class LangchainVectorstoreFAISS(VectorstoreHandler):
         # keeping this function within this class since it uses the langchain loader
         try:
             loader = CSVLoader(
-                file_path=file_path, encoding="utf-8", csv_args={"delimiter": ","}
+                file_path=file_path,
+                encoding="utf-8",
+                csv_args={"delimiter": ","},
             )
             csv_data = loader.load()
             if shuffle:
@@ -100,7 +104,9 @@ class LangchainVectorstoreFAISS(VectorstoreHandler):
 
         return csv_data
 
-    def chunk_data(self, chunk_size: int = 2048, chunk_overlap: int = 50) -> None:
+    def chunk_data(
+        self, chunk_size: int = 2048, chunk_overlap: int = 50
+    ) -> None:
         """Chunk the data to specified chunk size using RecursiveCharacterTextSplitter.
 
         Args:
@@ -156,7 +162,9 @@ class LangchainVectorstoreFAISS(VectorstoreHandler):
                     self.load_local_vectorstore(load_path=save_path)
                 else:
                     if self.verbose:
-                        logging.info("Vectorstore not overwritten; aborting... ")
+                        logging.info(
+                            "Vectorstore not overwritten; aborting... "
+                        )
 
         else:
             logging.info(f"Creating a new local vectorstore at: {save_path}")
@@ -165,7 +173,9 @@ class LangchainVectorstoreFAISS(VectorstoreHandler):
                 total_len = len(self.data)
 
                 # Below function is equivalent to embedding each piece of text, zipping text and embeddings as pairs, and creating index from these pairs
-                with tqdm(total=total_len, desc="Processing documents") as progress_bar:
+                with tqdm(
+                    total=total_len, desc="Processing documents"
+                ) as progress_bar:
                     for d in range(total_len):
                         doc = self.data[d]
                         # If already init, add next doc
@@ -207,7 +217,9 @@ class LangchainVectorstoreFAISS(VectorstoreHandler):
 
         try:
             self.vectorstore = FAISS.load_local(
-                load_path, self.embedding_type, allow_dangerous_deserialization=True
+                load_path,
+                self.embedding_type,
+                allow_dangerous_deserialization=True,
             )
             if self.verbose:
                 logging.info("Vectorstore loaded successfully.")
@@ -216,7 +228,9 @@ class LangchainVectorstoreFAISS(VectorstoreHandler):
             raise VectorstoreError(f"Failed to load vectorstore: {e}")
 
     def create_retriever(
-        self, search_type: str = "similarity", search_kwargs: Optional[dict] = None
+        self,
+        search_type: str = "similarity",
+        search_kwargs: Optional[dict] = None,
     ) -> None:
         """Create document retriever object for vectorstore.
 
@@ -274,4 +288,6 @@ class LangchainVectorstoreFAISS(VectorstoreHandler):
         except Exception as e:
             raise VectorstoreError(f"Failed to retrive documents: {e}")
 
-        return [retrieved_docs[i].page_content for i in range(len(retrieved_docs))]
+        return [
+            retrieved_docs[i].page_content for i in range(len(retrieved_docs))
+        ]

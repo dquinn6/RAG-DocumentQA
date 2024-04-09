@@ -38,7 +38,10 @@ class TestWikiTextProcessor:
         ],
     )
     def test_string_classify(
-        self, processor: WikiTextProcessor, string_with_delimiter: str, expected: str
+        self,
+        processor: WikiTextProcessor,
+        string_with_delimiter: str,
+        expected: str,
     ):
         """Test processor correctly classifies above strings based on the delimiter format observed in the dataset."""
         assert (
@@ -47,11 +50,15 @@ class TestWikiTextProcessor:
 
     def test_pattern_match(self, processor: WikiTextProcessor):
         """Test passages returned from pattern matching actually contain the specified str."""
-        passage_matches = processor.ret_passages_with_pattern(self.example_string)
+        passage_matches = processor.ret_passages_with_pattern(
+            self.example_string
+        )
         assert (
             len(passage_matches) > 0
         ), "Bad test; no passages with this example_string found"
-        assert all([self.example_string in passage for passage in passage_matches])
+        assert all(
+            [self.example_string in passage for passage in passage_matches]
+        )
 
     def test_passage_manipulation(self, processor: WikiTextProcessor):
         """Test passages are properly manipulated some another str."""
@@ -64,7 +71,9 @@ class TestWikiTextProcessor:
             save_path=None,
             manipulate_pattern=[(self.example_string, replace_with)],
         )
-        assert len(passages) > 0, "Bad search; no passages under this token limit"
+        assert (
+            len(passages) > 0
+        ), "Bad search; no passages under this token limit"
 
         filter_passages = [p for p in passages if replace_with in p]
         assert all(

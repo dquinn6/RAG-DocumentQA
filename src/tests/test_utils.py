@@ -32,7 +32,9 @@ def test_update_user_config():
     # Fetch updated config file and compare with init config
     updated_config = config.user_config
 
-    assert updated_config != init_config, "Failed to properly update config.yml"
+    assert (
+        updated_config != init_config
+    ), "Failed to properly update config.yml"
 
 
 def test_update_patterns_config():
@@ -50,10 +52,12 @@ def test_update_patterns_config():
 
     # Create random patterns to update to
     random_key = "".join(
-        random.choice(string.ascii_uppercase + string.digits) for _ in range(25)
+        random.choice(string.ascii_uppercase + string.digits)
+        for _ in range(25)
     )
     random_val = "".join(
-        random.choice(string.ascii_uppercase + string.digits) for _ in range(25)
+        random.choice(string.ascii_uppercase + string.digits)
+        for _ in range(25)
     )
 
     # Overwrite patterns json
@@ -63,4 +67,6 @@ def test_update_patterns_config():
     with open(PATTERNS_FILENAME) as f:
         updated_patterns = json.load(f)
 
-    assert init_patterns != updated_patterns, "Failed to properly update patterns.json"
+    assert (
+        init_patterns != updated_patterns
+    ), "Failed to properly update patterns.json"

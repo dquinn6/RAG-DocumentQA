@@ -6,8 +6,14 @@ import logging
 import pandas as pd
 import streamlit as st
 
-from src.app_helpers import (btn_lock_callback, create_logger, gather_docs,
-                             get_model_factory_name, render_doc_viewer)
+from src.app_helpers import (
+    btn_lock_callback,
+    create_logger,
+    create_placeholder_files,
+    gather_docs,
+    get_model_factory_name,
+    render_doc_viewer,
+)
 from src.config import config
 from src.factories import DataProcessorFactory, ModelFactory
 from src.utils import update_config_yml, update_patterns_json
@@ -16,11 +22,14 @@ LOG_PATH = config.user_config["LOG_PATH"]
 PATTERNS_FILENAME = config.user_config["PATTERNS_FILENAME"]
 
 # Define dataset, vectorstore, and model in config.yml to use in this app
-DATASET_NAME = config.user_config["DATASET_NAME"] # WikiText
-VECTORSTORE_NAME = config.user_config["VECTORSTORE_NAME"]
+DATASET_NAME = config.user_config["DATASET_NAME"]  # WikiText
+VECTORSTORE_NAME = config.user_config["VECTORSTORE_NAME"]  # FAISS
 MODEL_NAME = config.user_config[
     "MODEL_NAME"
 ]  # name that matches openai names; needs to be mapped to defined factory names
+
+# Create empty logfiles, pattern files, and directories if they don't exist
+create_placeholder_files()
 
 # Direct src code logging to backend.log
 logging.basicConfig(
@@ -34,7 +43,7 @@ logging.basicConfig(
 
 @st.cache_data
 def init_files():
-    """Clear log files and patterns json on start-up."""
+    """Clear log files and patterns json on new session start-up."""
     with open(LOG_PATH + "streamlit.log", "w") as f:
         f.close()
     with open(LOG_PATH + "backend.log", "w") as f:
@@ -296,7 +305,9 @@ def run_streamlit_app():
             st.session_state["communicator"] = communicator
 
         except Exception as e:
-            st.write(f"Failed to load current vectorstore; please create a new one to proceed.")
+            st.write(
+                "Failed to load current vectorstore; please create a new one to proceed."
+            )
             error_placeholder = st.empty()
             with error_placeholder.container(border=True):
                 st.write(e)

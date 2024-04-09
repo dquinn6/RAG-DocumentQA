@@ -43,11 +43,12 @@ test = [
 
 [tool.black]
 target-version = ["py311"]
-line-length = 80
+line-length = 79
 
 [tool.isort]
 py_version = 311
-line_length = 80
+line_length = 79
+force_grid_wrap = 2
 skip_glob = [
     "notebooks/*",
     "docs/*"
@@ -55,9 +56,9 @@ skip_glob = [
 
 [tool.ruff]
 target-version = "py311"
-line-length = 80
+line-length = 79
 indent-width = 4
 [tool.ruff.lint]
 preview = true
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "numpy"

@@ -6,8 +6,10 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from src.communicators import GPTCommunicator
 from src.config import config
 from src.data_processors import WikiTextProcessor
-from src.vectorstore_handlers import (LangchainVectorstoreFAISS,
-                                      VectorstoreHandler)
+from src.vectorstore_handlers import (
+    LangchainVectorstoreFAISS,
+    VectorstoreHandler,
+)
 
 API_KEY = config.user_config["ACCESS_TOKEN"]
 SAVE_PATH = config.user_config["SAVE_PATH"]
@@ -53,7 +55,9 @@ class TestVectorstoreHandlerFAISS:
     def test_create_and_retrieve(self, vs: VectorstoreHandler):
         """Test vectorstore is created properly and can retrieve docs."""
         n_retrieve = 2
-        vs.create_local_vectorstore(save_path=self.test_vs_path, force_create=True)
+        vs.create_local_vectorstore(
+            save_path=self.test_vs_path, force_create=True
+        )
         vs.create_retriever(search_kwargs={"k": n_retrieve})
         retrieved = vs.retrieve_top_documents(self.example_string)
 
@@ -82,7 +86,9 @@ class TestVectorstoreHandlerFAISS:
             [self.example_string in ret for ret in retrieved]
         ), "Bad retrieved docuemnts"
 
-    def test_text_chunking(self, vs: VectorstoreHandler, communicator: GPTCommunicator):
+    def test_text_chunking(
+        self, vs: VectorstoreHandler, communicator: GPTCommunicator
+    ):
         "Test documents are chunked properly to given size."
         chunk_size = 250
         vs.chunk_data(chunk_size=chunk_size, chunk_overlap=0)

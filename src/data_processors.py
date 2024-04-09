@@ -121,12 +121,18 @@ class WikiTextProcessor(DataProcessor):
         """
         try:
             # Store counts of titles, headers, etc. for double check
-            text_type = list(map(lambda t: self.classify_string_type(t), text_list))
+            text_type = list(
+                map(lambda t: self.classify_string_type(t), text_list)
+            )
             type_counts = Counter(text_type)
 
             # Get indicies of strings in list classified as titles
-            title_idx = np.array([i for i, v in enumerate(text_type) if v == "title"])
-            title_idx = np.append(title_idx, len(text_list))  # Append for last passage
+            title_idx = np.array(
+                [i for i, v in enumerate(text_type) if v == "title"]
+            )
+            title_idx = np.append(
+                title_idx, len(text_list)
+            )  # Append for last passage
             title_idx_pairs = np.column_stack((title_idx[:-1], title_idx[1:]))
 
             # Slice between title indicies to form full passage
@@ -141,7 +147,9 @@ class WikiTextProcessor(DataProcessor):
             ), "Passage count should match number of titles"
 
         except Exception as e:
-            raise DataProcessorError(f"Failed to transform list into passages: {e}")
+            raise DataProcessorError(
+                f"Failed to transform list into passages: {e}"
+            )
 
         return passages
 
@@ -200,7 +208,12 @@ class WikiTextProcessor(DataProcessor):
                         f"{len(passages)} passages remaining after limiting tokens"
                     )
                     largest_passage_size = np.max(
-                        list(map(lambda p: self.communicator.count_tokens(p), passages))
+                        list(
+                            map(
+                                lambda p: self.communicator.count_tokens(p),
+                                passages,
+                            )
+                        )
                     )
                     logging.info(
                         f"largest passage after trim is {largest_passage_size} tokens"

@@ -5,8 +5,11 @@ import pytest
 from src.communicators import GPTCommunicator
 from src.config import config
 from src.data_processors import WikiTextProcessor
-from src.factories import (DataProcessorFactory, ModelFactory,
-                           VectorstoreFactory)
+from src.factories import (
+    DataProcessorFactory,
+    ModelFactory,
+    VectorstoreFactory,
+)
 
 API_KEY = config.user_config["ACCESS_TOKEN"]
 
@@ -19,12 +22,16 @@ class TestFactories:
     def communicator(self):
         return GPTCommunicator(api_key=API_KEY, model_name="gpt-3.5-turbo")
 
-    def test_factory_create_wikitext_processor(self, communicator: GPTCommunicator):
+    def test_factory_create_wikitext_processor(
+        self, communicator: GPTCommunicator
+    ):
         """Test WikiText DataProcessor object is properly created from factory."""
 
         # Init processor from factory
         dpf = DataProcessorFactory()
-        processor = dpf.create_processor(name="WikiText", communicator=communicator)
+        processor = dpf.create_processor(
+            name="WikiText", communicator=communicator
+        )
 
         # Check returned object's class matches our module
         assert (
@@ -80,12 +87,16 @@ class TestFactories:
 
         dpf = DataProcessorFactory()
         with pytest.raises(NotImplementedError):
-            _ = dpf.create_processor(name="bad_name", communicator=communicator)
+            _ = dpf.create_processor(
+                name="bad_name", communicator=communicator
+            )
 
         vsf = VectorstoreFactory()
         with pytest.raises(NotImplementedError):
             vsf.attach_vectorstore(
-                name="bad_name", communicator=communicator, load_vectorstore=True
+                name="bad_name",
+                communicator=communicator,
+                load_vectorstore=True,
             )
 
         model_factory = ModelFactory()
