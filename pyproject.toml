@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "RAG_QA_DEMO"
+version = "1.0.0"
+description = "A demo application of a Retrieval Augmented Generation (RAG) system for question answering over a set of documents implemented in a Streamlit UI."
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = ["demo", "RAG", "QA", "Streamlit"]
+authors = [
+  {name = "Devin Quinn", email = "dquinn1450@gmail.com" }
+]
+dependencies = [
+    "langchain == 0.1.12",
+    "langchain_community == 0.0.28",
+    "langchain_core == 0.1.33",
+    "langchain-openai == 0.1.0",
+    "sentence-transformers == 2.2.2",
+    "faiss-cpu == 1.7.4",
+    "streamlit == 1.30.0",
+    "datasets == 2.18.0",
+    "pyyaml == 6.0.1",
+    "tiktoken == 0.6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pandas >= 2.2.1",
+    "tqdm >= 4.66.2",
+    "black ~= 24.3.0",
+    "isort ~= 5.13.2",
+    "ruff ~= 0.3.4"
+]
+test = [
+    "pytest ~= 8.1.1",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/dquinn6/RAG-DocumentQA"
+"Source" = "https://github.com/dquinn6/RAG-DocumentQA"
+
+[tool.black]
+target-version = ["py311"]
+line-length = 79
+
+[tool.isort]
+py_version = 311
+line_length = 79
+force_grid_wrap = 2
+skip_glob = [
+    "notebooks/*",
+    "docs/*"
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 79
+indent-width = 4
+[tool.ruff.lint]
+preview = true
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
