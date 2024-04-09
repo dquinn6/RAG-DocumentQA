@@ -2,21 +2,29 @@
 
 ## Table of Contents
 
-[About](#bout)
+>[About](#bout)
 
-[Getting Started](#getting-started)
+>>[Codebase Contents](#codebase-contents)
 
-- [Setup](#setup)
-- [Documentation](#documentation)
+>>>[Notebooks](#notebooks)
 
-[Running the UI-based Application](#running-the-ui-based-application)
+>>>[Source Code](#source-code)
 
-- [UI Demo](#ui-demo)
-- [Stopping the program](#stopping-the-program)
+>>>[Scripts](#scripts)
 
-[Running the CLI-based Application](#running-the-cli-based-application)
+>[Getting Started](#getting-started)
 
-- [CLI Demo](#cli-demo)
+>>[Setup](#setup)
+
+>[Running the UI-based Application](#running-the-ui-based-application)
+
+>>[UI Demo](#ui-demo)
+
+>>[Stopping the program](#stopping-the-program)
+
+>[Running the CLI-based Application](#running-the-cli-based-application)
+
+>>[CLI Demo](#cli-demo)
 
 <br/>
 
@@ -24,6 +32,24 @@
 This application is a Retrieval Augmented Generation (RAG) based system using a Large Language Model (LLM) to answer questions on a supported set of documents. This demo application currently uses [OpenAI's GPT](https://platform.openai.com/docs/models) as the underlying LLM and the [WikiText2](https://huggingface.co/datasets/wikitext) dataset as a set of dummy documents to answer questions on, but the modular structure of this codebase allows a developer to easily implement other types of models or datasets.
 
 For a real use case, we would normally supply a set of private documents to the LLM that it wasn't trained on, creating a much more practical question answering application. WikiText2 is used in this application as it is open-source and provides a diverse set of documents to query on. However, GPT has already been trained on much of the content in these documents and can answer related questions without using a RAG approach. To better demonstrate this system, the functionality to manipulate these documents has been incorporated to better demonstrate GPT's usage of the given information rather than its internal knowledge.
+
+### Codebase Contents:
+ 
+
+#### Notebooks:
+  - **dev_RAG.ipynb**: A notebook that walks through the development process for this application, including EDA, data preprocessing, and an initial POC development of the base RAG system.
+  - **demo_pipeline.ipynb**: A notebook demonstrating how to easily create and utilize a full RAG pipeline using the developed modules in this project.
+
+#### Source Code:
+ - **Project modules** for the application
+ - **Config yaml files** for specifying run parameters
+ - **Pytests** for the project modules
+
+#### Scripts:
+ - **run_init.py**: A script to initialize required project directories and files.
+ - **run_cli.py**: A program script to run the base application through the command line interface (CLI).
+ - **run_app.py**: A program script to run an enhanced version of the application through a UI, allowing for easier user interaction with the program.
+
 
 <br/>
 
@@ -121,11 +147,3 @@ If you don't wish to use the UI-based app, you can interface with the base RAG s
 **VERBOSE**: Show logging INFO messages.
 
 <br/>
-
-## Documentation
-
-    cd PROJECT_DIR
-    pdoc --html src
-
-    cd PROJECT_DIR
-    start docs/src/index.html
