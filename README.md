@@ -16,6 +16,8 @@
 
 >>[Setup](#setup)
 
+>>[Documentation](#documentation)
+
 >[Running the UI-based Application](#running-the-ui-based-application)
 
 >>[UI Demo](#ui-demo)
@@ -86,7 +88,11 @@ Navigate to *src/config/user_config.yml* and add your OpenAI API key next to ACC
 
 #### 5. (Optional) Change other config parameters.
 
-Change other parameters in user_config.yml if desired. However, many of these can be adjusted from the UI after starting the program. See [Config](#config) for more details on each of these parameters.
+Change other parameters in *user_config.yml* if desired. However, many of these can be adjusted from the UI after starting the program. See [Config](#config) for more details on each of these parameters.
+
+### Documentation
+
+You can view all src code documentation by opening *docs/index.html* in your local browser. 
 
 
 <br/>
@@ -113,7 +119,7 @@ To stop the program, send the terminate process signal (CTRL+C) in your terminal
 
 ## Running the CLI-based Application
 
-If you don't wish to use the UI-based app, you can interface with the base RAG system using the command line interface via run_cli.py. This program will create the model using the config params and manipulation patterns in src/config/user_config.yml and src/config/manipulate_patterns.json. After setting your desired params for the run, use the following command to start the program:
+If you don't wish to use the UI-based app, you can interface with the base RAG system using the command line interface via *run_cli.py.* This program will create the model using the config params and manipulation patterns in *src/config/user_config.yml* and *src/config/manipulate_patterns.json.* After setting your desired params for the run, use the following command to start the program:
 
     python run_cli.py
 
@@ -125,7 +131,7 @@ If you don't wish to use the UI-based app, you can interface with the base RAG s
 
 ## Config
 
-This section describes each of the config parameter fields in src/config/user_config.yml.
+This section describes each of the config parameter fields in *src/config/user_config.yml.*
 
 **ACCESS_TOKEN**: OpenAI API key for model access; may be expanded for other types of models in the future.
 
