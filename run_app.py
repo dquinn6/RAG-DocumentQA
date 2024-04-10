@@ -2,6 +2,7 @@
 
 import json
 import logging
+from importlib import reload
 
 import pandas as pd
 import streamlit as st
@@ -15,7 +16,8 @@ from src.app_helpers import (
     render_doc_viewer,
 )
 from src.config import config
-from src.factories import DataProcessorFactory, ModelFactory
+from src import factories
+#from src.factories import DataProcessorFactory, ModelFactory
 from src.utils import update_config_yml, update_patterns_json
 
 LOG_PATH = config.user_config["LOG_PATH"]
@@ -55,12 +57,12 @@ def init_files():
 def init_communicator_and_processor():
     """Init communicator and data processor on start-up."""
     # Since user will manipulate docs from UI, init with regular communicator first
-    model_factory = ModelFactory()
+    model_factory = factories.ModelFactory()
     communicator = model_factory.create_model(
         get_model_factory_name(MODEL_NAME, rag=False)
     )
 
-    data_factory = DataProcessorFactory()
+    data_factory = factories.DataProcessorFactory()
     data_processor = data_factory.create_processor(DATASET_NAME, communicator)
 
     return communicator, data_processor
@@ -172,7 +174,7 @@ def run_streamlit_app():
         disabled=st.session_state.disable_flg,
     )
     if selected_model:
-        config.user_config["MODEL_NAME"] = selected_model
+        update_config_yml({"MODEL_NAME": selected_model})
         with model_placeholder.container(border=False):
             st.write(f"Model: {selected_model}")
 
@@ -253,7 +255,7 @@ def run_streamlit_app():
 
     if ndocs:
         ndocs = int(ndocs)
-        config.user_config["N_RETRIEVED_DOCS"] = ndocs
+        update_config_yml({"N_RETRIEVED_DOCS": ndocs})
         with ndocs_placeholder.container(border=False):
             st.write(f"Number of docs to retrieve: {ndocs}")
 
@@ -295,7 +297,10 @@ def run_streamlit_app():
 
     if load_vs.button("Load vectorstore", key="load"):
         try:
-            model_factory = ModelFactory()
+            # Need to reload factories module, since config may have been adjusted and differ from the current module variables
+            reload(factories)
+
+            model_factory = factories.ModelFactory()
             communicator = model_factory.create_model(
                 model_name=get_model_factory_name(MODEL_NAME, rag=True),
                 dataset_name=DATASET_NAME,
@@ -324,7 +329,10 @@ def run_streamlit_app():
                 with progress_holder.container():
                     st.progress(p, f"Progress: Documents Processed={i}")
 
-            model_factory = ModelFactory()
+            # Need to reload factories module, since config may have been adjusted and differ from the current module variables
+            reload(factories)
+
+            model_factory = factories.ModelFactory()
 
             communicator = model_factory.create_model(
                 model_name=get_model_factory_name(MODEL_NAME, rag=True),
