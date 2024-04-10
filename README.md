@@ -31,7 +31,7 @@
 <br/>
 
 ## About
-This application is a Retrieval Augmented Generation (RAG) based system using a Large Language Model (LLM) to answer questions on a supported set of documents. This demo application currently uses [OpenAI's GPT](https://platform.openai.com/docs/models) as the underlying LLM and the [WikiText2](https://huggingface.co/datasets/wikitext) dataset as a set of dummy documents to answer questions on, but the modular structure of this codebase allows the easy implementation other types of models or datasets.
+This application is a Retrieval Augmented Generation (RAG) based system using a Large Language Model (LLM) to answer questions on a supported set of documents. This demo application currently uses [OpenAI's GPT](https://platform.openai.com/docs/models) as the underlying LLM and the [WikiText2](https://huggingface.co/datasets/wikitext) dataset as a set of dummy documents to answer questions on, but the modular structure of this codebase allows easy implementation for other types of models or datasets.
 
 For a real use case, we would normally supply a set of private documents to the LLM that it wasn't trained on to create a practical application for users. WikiText2 is used in this application as it is open-source and provides a diverse set of documents to query on, making it a good choice for a demo application. However, GPT has already been trained on much of the content in these documents and can answer related questions without using a RAG approach. Therefore, the functionality to manipulate these documents has been incorporated to better demonstrate GPT's usage of the given information over its internal knowledge.
 
