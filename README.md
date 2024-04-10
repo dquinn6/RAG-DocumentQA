@@ -16,6 +16,8 @@
 
 >>[Setup](#setup)
 
+>>[Documentation](#documentation)
+
 >[Running the UI-based Application](#running-the-ui-based-application)
 
 >>[UI Demo](#ui-demo)
