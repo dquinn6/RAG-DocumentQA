@@ -17,7 +17,6 @@ from src.app_helpers import (
 )
 from src.config import config
 from src import factories
-#from src.factories import DataProcessorFactory, ModelFactory
 from src.utils import update_config_yml, update_patterns_json
 
 LOG_PATH = config.user_config["LOG_PATH"]
@@ -235,7 +234,6 @@ def run_streamlit_app():
     if token_limit:
         token_limit = int(token_limit)
         if config.user_config["TOKEN_LIMIT"] != token_limit:
-            # config.user_config["TOKEN_LIMIT"] = token_limit
             update_config_yml({"TOKEN_LIMIT": token_limit})
             with token_count_placeholder.container(border=False):
                 st.write(f"Token limit: {token_limit}")
