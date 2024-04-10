@@ -60,7 +60,7 @@ def update_config_yml(new_config: dict) -> None:
         # Need to reload config module to update imported config.user_config values
         reload(config)
 
-        logging.info(f"{config.filepath} overwritten.")
+        #logging.info(f"{config.filepath} overwritten.")
 
     except Exception as e:
         logging.error(f"Failed to update config file: {e}")
