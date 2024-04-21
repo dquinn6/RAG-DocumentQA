@@ -48,7 +48,6 @@ For a real use case, we would normally supply a set of private documents to the 
  - **Pytests** for the project modules.
 
 #### Scripts:
- - **run_init.py**: A script to initialize required project directories and files.
  - **run_cli.py**: A program script to run the base application through the command line interface (CLI).
  - **run_app.py**: A program script to run an enhanced version of the application through a UI, allowing for easier user interaction with the program.
 
